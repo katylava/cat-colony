@@ -174,11 +174,15 @@ const isYes = v => /^(yes|y|true)$/i.test((v || "").trim());
 const isSoon = v => /week|soon|scheduled|pending/i.test(v || "");
 const lower = v => (v || "").toLowerCase();
 
-// Fixed status → pill. Text label always present, never color alone.
+// Neuter status → pill. Text label always present, never color alone.
+// Matches the sheet's fixed set (no / yes / trapped and waiting) plus older
+// free-text phrasings, so it keeps working during the switch-over.
 function neuterPill(v) {
-  if (isYes(v)) return { cls: "ok", icon: "✓", label: "Spayed/neutered" };
-  if (isSoon(v)) return { cls: "warn", icon: "◷", label: "Fixing soon" };
-  if (/^no?$/i.test((v || "").trim())) return { cls: "warn", icon: "•", label: "Not yet fixed" };
+  const s = (v || "").trim();
+  if (isYes(s)) return { cls: "ok", icon: "✓", label: "Spayed/neutered" };
+  if (/trapp|waiting/i.test(s)) return { cls: "warn", icon: "◷", label: "Trapped, awaiting spay/neuter" };
+  if (isSoon(s)) return { cls: "warn", icon: "◷", label: "Fixing soon" };
+  if (/^no?$/i.test(s)) return { cls: "warn", icon: "•", label: "Not yet fixed" };
   return null;
 }
 function locPill(status) {
