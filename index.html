@@ -122,9 +122,9 @@
   .status .slabel { display: block; text-transform: uppercase; letter-spacing: .04em; font-size: .66rem; color: var(--muted); margin-bottom: 1px; }
   .status .sval { color: var(--text); }
   .statement { font-size: .9rem; line-height: 1.45; margin: 0 0 12px; padding-left: 10px; border-left: 2px solid var(--line); color: var(--text); }
-  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: .84rem; }
-  dt { color: var(--muted); }
-  dd { margin: 0; }
+  dl { margin: 0; font-size: .85rem; }
+  dt { color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-size: .66rem; margin-top: 9px; }
+  dd { margin: 1px 0 0; }
   .state { text-align: center; color: var(--muted); padding: 60px 20px; }
   .state.err { color: #c0392b; }
   footer { color: var(--muted); font-size: .82rem; padding: 0 0 50px; }
@@ -293,7 +293,15 @@ function card(c, showNeg) {
   // Status and Statement get their own display; everything else lists generically.
   const skip = new Set(["Photo", "Name", "Sex", "Status", "Statement", "Neutered?", "Up for adoption?"]);
   const details = Object.keys(c).filter(k => k && !skip.has(k) && c[k])
-    .map(k => `<dt>${esc(k.replace(/\?$/, ""))}</dt><dd>${esc(c[k])}</dd>`).join("");
+    .map(k => {
+      let label = k.replace(/\?$/, "");
+      let value = c[k];
+      // A trailing "(qualifier)" in the header is really part of the data — the
+      // owner hoists it there to avoid retyping it in every cell.
+      const m = label.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+      if (m) { label = m[1]; value = `${value} (${m[2]})`; }
+      return `<dt>${esc(label)}</dt><dd>${esc(value)}</dd>`;
+    }).join("");
   return `<article class="card">
     <div class="photo">${img}${tags}</div>
     <div class="body">
