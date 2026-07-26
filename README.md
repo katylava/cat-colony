@@ -1,4 +1,4 @@
-# Our Cats
+# The Cat Colony
 
 A live web view of a cat-colony Google Sheet. Frontend-only, hosted on GitHub Pages.
 
