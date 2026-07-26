@@ -156,8 +156,8 @@ const VIEWS = [
     blurb: "Cats living in the colony now." },
   { key: "adopted",  gid: "679410925",  nav: "Adopted by Me", title: "Adopted by Me",
     blurb: "Cats I took into my own home — including some who needed surgery or socializing from feral." },
-  { key: "visitors", gid: "1859449606", nav: "Visitors",      title: "Occasional Visitors",
-    blurb: "Cats that pass through now and then." },
+  { key: "visitors", gid: "1859449606", nav: "Feral Visitors", title: "Feral Visitors",
+    blurb: "Fully feral and seen only every few weeks or months — too rarely to trap, so they can't be spayed or neutered." },
   { key: "memoriam", gid: "2113017747", nav: "In Memoriam",   title: "In Memoriam",
     blurb: "Cats no longer with us, and how they were lost." },
 ];
@@ -278,9 +278,10 @@ function statsStrip() {
     </div>`).join("")}</div>`;
 }
 
-// showNeg: whether "not yet fixed" / "fixing soon" pills make sense here. They're
-// actionable only for living cats (colony, visitors) — never for adopted or gone ones.
-function card(c, showNeg) {
+// `view` is the current screen. Neuter pills read differently per screen: a ✓
+// shows everywhere; "not yet fixed" is a colony to-do; feral visitors can't be
+// trapped at all; adopted/gone cats show no negative.
+function card(c, view) {
   const name = c.Name;
   const photo = PHOTOS[name];
   const adopt = isYes(c["Up for adoption?"]);
@@ -294,7 +295,13 @@ function card(c, showNeg) {
   const tags = adopt ? `<div class="corner"><span class="tag">Adoptable</span></div>` : "";
   const np = neuterPill(c["Neutered?"]);
   const pillObjs = [];
-  if (np && (np.cls === "ok" || showNeg)) pillObjs.push(np);  // ✓ always; negatives only if actionable
+  if (np && np.cls === "ok") {
+    pillObjs.push(np);                                        // ✓ fixed — shown on every screen
+  } else if (view.key === "visitors") {
+    pillObjs.push({ cls: "warn", icon: "•", label: "Feral — can't trap" });
+  } else if (view.key === "colony" && np) {
+    pillObjs.push(np);                                        // not yet fixed / trapped & waiting
+  }
   const pills = pillObjs.map(p => `<span class="pill ${p.cls}">${p.icon} ${p.label}</span>`).join("");
   // Status and Statement get their own display; everything else lists generically.
   const skip = new Set(["Photo", "Name", "Sex", "Status", "Statement", "Neutered?", "Up for adoption?"]);
@@ -337,7 +344,7 @@ function route() {
     return Object.values(c).some(val => String(val).toLowerCase().includes(SEARCH));
   });
 
-  const showAdoptChip = v.key === "colony" || v.key === "visitors";
+  const showAdoptChip = v.key === "colony";  // only the colony has adoptable cats
   const main = document.getElementById("main");
   main.innerHTML = `
     ${v.key === "colony" ? statsStrip() : ""}
@@ -346,7 +353,7 @@ function route() {
       <input type="search" id="search" placeholder="Search names, status, litter…" autocomplete="off" value="${esc(SEARCH)}">
       ${showAdoptChip ? `<button class="chip" id="adoptOnly" aria-pressed="${ADOPT_ONLY}">💜 Up for adoption</button>` : ""}
     </div>
-    ${rows.length ? `<div class="grid">${rows.map(c => card(c, showAdoptChip)).join("")}</div>`
+    ${rows.length ? `<div class="grid">${rows.map(c => card(c, v)).join("")}</div>`
                   : `<div class="state">No cats match.</div>`}`;
 
   const search = document.getElementById("search");
