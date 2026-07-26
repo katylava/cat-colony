@@ -70,9 +70,14 @@
     padding: 15px 16px; box-shadow: var(--shadow);
   }
   .stat .num { font-size: 1.9rem; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .stat .num .of { font-size: 1rem; font-weight: 600; color: var(--muted); }
   .stat .lbl { color: var(--muted); font-size: .82rem; margin-top: 2px; }
-  .meter { height: 6px; border-radius: 999px; background: var(--line); margin-top: 10px; overflow: hidden; }
-  .meter > span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+  .stat .note { color: var(--muted); font-size: .72rem; margin-top: 6px; }
+  /* Two-segment progress: solid = fixed, faded = trapped & waiting, track = not yet. */
+  .meter { display: flex; gap: 2px; height: 6px; border-radius: 999px; background: var(--line); margin-top: 10px; overflow: hidden; }
+  .meter > span { display: block; height: 100%; }
+  .meter .done { background: var(--accent); }
+  .meter .prog { background: var(--accent); opacity: .4; }
 
   .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 20px 0 4px; }
   input[type=search] {
@@ -113,7 +118,6 @@
   }
   .pill.ok { background: var(--ok-soft); border-color: transparent; color: var(--ok); }
   .pill.warn { background: var(--warn-soft); border-color: transparent; color: var(--warn); }
-  .pill.loc { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
   .status { color: var(--muted); font-size: .9rem; margin: 0 0 10px; }
   dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: .84rem; }
   dt { color: var(--muted); }
@@ -172,6 +176,8 @@ function parseGviz(text) {
 const esc = s => (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const isYes = v => /^(yes|y|true)$/i.test((v || "").trim());
 const isSoon = v => /week|soon|scheduled|pending/i.test(v || "");
+// In-progress toward being fixed: "trapped and waiting" plus older phrasings.
+const isProgress = v => /trapp|waiting|week|soon|scheduled|pending/i.test(v || "");
 const lower = v => (v || "").toLowerCase();
 
 // Neuter status → pill. Text label always present, never color alone.
@@ -185,13 +191,6 @@ function neuterPill(v) {
   if (/^no?$/i.test(s)) return { cls: "warn", icon: "•", label: "Not yet fixed" };
   return null;
 }
-function locPill(status) {
-  const s = lower(status);
-  if (s.includes("inside")) return { cls: "loc", icon: "🏠", label: "Indoors" };
-  if (s.includes("outside")) return { cls: "loc", icon: "🌳", label: "Outdoors" };
-  return null;
-}
-
 let BYVIEW = {};   // key -> [rows]
 let PHOTOS = {};
 
@@ -230,22 +229,41 @@ function renderNav() {
 
 function statsStrip() {
   const colony = BYVIEW.colony;
-  const indoors = colony.filter(c => lower(c.Status).includes("inside")).length;
+  const total = colony.length;
+  const fixed = colony.filter(c => isYes(c["Neutered?"])).length;
+  const waiting = colony.filter(c => isProgress(c["Neutered?"])).length;
+  const inCare = colony.filter(c => lower(c.Status).includes("inside")).length;
   // Every cat I've ever had fixed — current colony, adopted, and gone alike.
   const fixedAllTime = VIEWS.reduce((n, v) =>
     n + BYVIEW[v.key].filter(c => isYes(c["Neutered?"])).length, 0);
+  const pctFixed = total ? (fixed / total) * 100 : 0;
+  const pctWait = total ? (waiting / total) * 100 : 0;
+
+  // Colony spay/neuter gets its own tile: a two-segment meter (done + waiting)
+  // so "how managed is the active colony" reads at a glance.
+  const colonyTile = `
+    <div class="stat">
+      <div class="num">${fixed}<span class="of"> / ${total}</span></div>
+      <div class="lbl">colony spayed / neutered</div>
+      <div class="meter">
+        <span class="done" style="width:${pctFixed}%"></span>
+        <span class="prog" style="width:${pctWait}%"></span>
+      </div>
+      ${waiting ? `<div class="note">${waiting} trapped &amp; waiting</div>` : ""}
+    </div>`;
+
   const tiles = [
-    { num: colony.length, lbl: "in the colony now" },
-    { num: fixedAllTime, lbl: "cats I've spayed / neutered" },
-    { num: indoors, lbl: "fostered indoors now" },
+    { num: total, lbl: "in the colony now" },
+    { html: colonyTile },
+    { num: fixedAllTime, lbl: "spayed / neutered, all-time" },
+    { num: inCare, lbl: "in foster care now" },
     { num: BYVIEW.adopted.length, lbl: "adopted into my home" },
     { num: BYVIEW.memoriam.length, lbl: "remembered" },
   ];
-  return `<div class="stats">${tiles.map(t => `
+  return `<div class="stats">${tiles.map(t => t.html || `
     <div class="stat">
       <div class="num">${t.num}</div>
       <div class="lbl">${t.lbl}</div>
-      ${t.meter != null ? `<div class="meter"><span style="width:${t.meter}%"></span></div>` : ""}
     </div>`).join("")}</div>`;
 }
 
@@ -262,8 +280,6 @@ function card(c, showNeg) {
   const np = neuterPill(c["Neutered?"]);
   const pillObjs = [];
   if (np && (np.cls === "ok" || showNeg)) pillObjs.push(np);  // ✓ always; negatives only if actionable
-  const lp = locPill(c.Status);
-  if (lp) pillObjs.push(lp);
   const pills = pillObjs.map(p => `<span class="pill ${p.cls}">${p.icon} ${p.label}</span>`).join("");
   const skip = new Set(["Photo", "Name", "Sex", "Status", "Neutered?", "Up for adoption?"]);
   const details = Object.keys(c).filter(k => k && !skip.has(k) && c[k])
