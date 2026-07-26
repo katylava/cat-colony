@@ -171,7 +171,13 @@ function parseGviz(text) {
   else headers = (rows.shift() || []).map(c => (c && c.v != null ? String(c.v) : ""));
   return rows.map(cells => {
     const o = {};
-    headers.forEach((h, i) => { const c = cells[i]; o[h] = c && c.v != null ? String(c.v).trim() : ""; });
+    headers.forEach((h, i) => {
+      const c = cells[i];
+      // Prefer the formatted value (c.f) — date cells arrive in c.v as the raw
+      // "Date(2026,5,27)" serialization; c.f is what the sheet displays.
+      const val = c ? (c.f != null ? c.f : c.v) : null;
+      o[h] = val != null ? String(val).trim() : "";
+    });
     return o;
   });
 }
