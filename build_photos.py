@@ -66,7 +66,8 @@ def main():
             print(f"  ! {name}: {e}", file=sys.stderr)
             continue
         if url:
-            photos[name] = url
+            # img = embeddable image URL; share = the Google Photos page to open on click.
+            photos[name] = {"img": url, "share": share}
             print(f"  ok {name}")
         else:
             print(f"  -- {name}: no embeddable image found", file=sys.stderr)

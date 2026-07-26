@@ -101,7 +101,9 @@
     aspect-ratio: 1 / 1; background: var(--accent-soft);
     display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;
   }
-  .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo a { display: block; width: 100%; height: 100%; }
+  .photo img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .2s ease; }
+  .photo a:hover img { transform: scale(1.04); }
   .photo .ph { font-size: 3rem; opacity: .5; }
   .corner { position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
   .tag {
@@ -282,9 +284,13 @@ function card(c, showNeg) {
   const name = c.Name;
   const photo = PHOTOS[name];
   const adopt = isYes(c["Up for adoption?"]);
-  const img = photo
-    ? `<img loading="lazy" src="${esc(photo)}=w500" alt="${esc(name)}">`
+  const inner = photo
+    ? `<img loading="lazy" src="${esc(photo.img)}=w500" alt="${esc(name)}">`
     : `<span class="ph">🐈</span>`;
+  // Clicking the photo opens its Google Photos share page in a new tab.
+  const img = photo && photo.share
+    ? `<a href="${esc(photo.share)}" target="_blank" rel="noopener" title="View ${esc(name)}'s photos">${inner}</a>`
+    : inner;
   const tags = adopt ? `<div class="corner"><span class="tag">Adoptable</span></div>` : "";
   const np = neuterPill(c["Neutered?"]);
   const pillObjs = [];
