@@ -1,0 +1,266 @@
+<title>Our Cats</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #faf7f2;
+    --card: #ffffff;
+    --text: #2a2622;
+    --muted: #7a726a;
+    --line: #ece5db;
+    --accent: #d98324;
+    --accent-soft: #fbe9d3;
+    --adopt: #2e8b57;
+    --adopt-soft: #dff0e6;
+    --shadow: 0 1px 2px rgba(0,0,0,.05), 0 6px 18px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17140f;
+      --card: #221e18;
+      --text: #ece7df;
+      --muted: #a99f92;
+      --line: #35302a;
+      --accent: #eaa04c;
+      --accent-soft: #3a2c19;
+      --adopt: #63c98d;
+      --adopt-soft: #1c3327;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.35);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  header {
+    padding: 32px 20px 8px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.9rem; margin: 0 0 4px; letter-spacing: -.02em; }
+  .sub { color: var(--muted); margin: 0; }
+  .controls {
+    position: sticky; top: 0; z-index: 5;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+    padding: 12px 20px;
+    margin-top: 16px;
+  }
+  .controls-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  }
+  input[type=search] {
+    flex: 1 1 220px; min-width: 160px;
+    padding: 9px 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+    font-size: .95rem;
+  }
+  .chip {
+    padding: 8px 14px; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+    font-size: .9rem; white-space: nowrap;
+  }
+  .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  main { max-width: 1200px; margin: 0 auto; padding: 8px 20px 60px; }
+  .section-title {
+    display: flex; align-items: baseline; gap: 10px;
+    margin: 34px 0 14px; padding-bottom: 8px; border-bottom: 2px solid var(--line);
+  }
+  .section-title h2 { font-size: 1.25rem; margin: 0; letter-spacing: -.01em; }
+  .section-title .count { color: var(--muted); font-size: .95rem; }
+  .grid {
+    display: grid; gap: 18px;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    overflow: hidden; box-shadow: var(--shadow);
+    display: flex; flex-direction: column;
+  }
+  .card.adopt { border-color: var(--adopt); }
+  .photo {
+    aspect-ratio: 1 / 1; background: var(--accent-soft);
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden; position: relative;
+  }
+  .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo .ph { font-size: 3rem; opacity: .5; }
+  .badge {
+    position: absolute; top: 10px; left: 10px;
+    background: var(--adopt); color: #fff; font-size: .72rem; font-weight: 600;
+    padding: 4px 9px; border-radius: 999px; letter-spacing: .02em;
+    box-shadow: 0 1px 4px rgba(0,0,0,.2);
+  }
+  .body { padding: 13px 15px 16px; }
+  .name { font-size: 1.08rem; font-weight: 700; margin: 0 0 2px; display: flex; align-items: center; gap: 7px; }
+  .sex { font-size: .95rem; color: var(--muted); font-weight: 500; }
+  .status { color: var(--muted); font-size: .9rem; margin: 0 0 10px; }
+  dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: .84rem; }
+  dt { color: var(--muted); }
+  dd { margin: 0; }
+  .state { text-align: center; color: var(--muted); padding: 60px 20px; }
+  .state.err { color: #c0392b; }
+  a.src { color: var(--accent); text-decoration: none; }
+  footer { max-width: 1200px; margin: 0 auto; padding: 0 20px 50px; color: var(--muted); font-size: .82rem; }
+</style>
+
+<header>
+  <h1>🐾 Our Cats</h1>
+  <p class="sub" id="sub">Loading from the spreadsheet…</p>
+</header>
+
+<div class="controls">
+  <div class="controls-inner">
+    <input type="search" id="search" placeholder="Search by name, status, litter…" autocomplete="off">
+    <button class="chip" id="adoptOnly" aria-pressed="false">💜 Up for adoption</button>
+  </div>
+</div>
+
+<main id="main">
+  <div class="state" id="state">Loading…</div>
+</main>
+
+<footer>
+  Data is read live from a Google Sheet on each load. Photos refresh when the maintainer re-runs the photo script.
+</footer>
+
+<script>
+const SHEET_ID = "1UHlnzkYfQK-DDTvkqu8x-IDl3tB7L8fdiBQw_-V9GzY";
+
+// Each tab of the sheet, in display order. `emoji`/`title` label the section.
+const TABS = [
+  { gid: "0",          title: "Current Colony",     emoji: "🏡", blurb: "Cats living here now" },
+  { gid: "1859449606", title: "Occasional Visitors", emoji: "👀", blurb: "Seen now and then" },
+  { gid: "679410925",  title: "Adopted",             emoji: "❤️", blurb: "Found their homes" },
+  { gid: "2113017747", title: "In Memoriam",         emoji: "🕊️", blurb: "Gone but remembered" },
+];
+
+const gvizUrl = gid =>
+  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`;
+
+// gviz wraps its JSON in `google.visualization.Query.setResponse(<json>);`
+function parseGviz(text) {
+  const json = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+  const cols = json.table.cols;
+  let rows = json.table.rows.map(r => r.c);
+  let headers;
+  // gviz sometimes promotes the header into column labels, sometimes leaves it
+  // as the first data row. Handle both so we always get clean field names.
+  if (cols.some(c => c.label)) {
+    headers = cols.map((c, i) => c.label || `col${i}`);
+  } else {
+    headers = (rows.shift() || []).map(c => (c && c.v != null ? String(c.v) : ""));
+  }
+  return rows.map(cells => {
+    const obj = {};
+    headers.forEach((h, i) => {
+      const cell = cells[i];
+      obj[h] = cell && cell.v != null ? String(cell.v).trim() : "";
+    });
+    return obj;
+  });
+}
+
+const isYes = v => /^(yes|y|true)$/i.test((v || "").trim());
+const esc = s => (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+let ALL = [];       // flat list of {tab, fields...}
+let PHOTOS = {};
+
+async function load() {
+  const state = document.getElementById("state");
+  try {
+    const [photos, ...tabData] = await Promise.all([
+      fetch("photos.json").then(r => r.ok ? r.json() : {}).catch(() => ({})),
+      ...TABS.map(t => fetch(gvizUrl(t.gid)).then(r => r.text()).then(parseGviz)),
+    ]);
+    PHOTOS = photos;
+    ALL = [];
+    tabData.forEach((rows, i) => {
+      rows.forEach(row => {
+        if (!row.Name) return;             // skip blank rows
+        ALL.push({ __tab: TABS[i].gid, ...row });
+      });
+    });
+    render();
+    const adoptCount = ALL.filter(c => isYes(c["Up for adoption?"])).length;
+    document.getElementById("sub").textContent =
+      `${ALL.length} cats` + (adoptCount ? ` · ${adoptCount} up for adoption` : "");
+  } catch (e) {
+    state.className = "state err";
+    state.textContent = "Couldn't load the sheet. Make sure it's still shared publicly. (" + e.message + ")";
+  }
+}
+
+function card(c) {
+  const name = c.Name;
+  const photo = PHOTOS[name];
+  const adopt = isYes(c["Up for adoption?"]);
+  const sex = c.Sex ? `<span class="sex">${esc(c.Sex)}</span>` : "";
+
+  // Detail rows: every non-empty field except the ones shown elsewhere.
+  const skip = new Set(["Photo", "Name", "Sex", "Status", "Up for adoption?", "__tab"]);
+  const details = Object.keys(c)
+    .filter(k => !skip.has(k) && c[k])
+    .map(k => `<dt>${esc(k.replace(/\?$/, ""))}</dt><dd>${esc(c[k])}</dd>`)
+    .join("");
+
+  const img = photo
+    ? `<img loading="lazy" src="${esc(photo)}=w500" alt="${esc(name)}">`
+    : `<span class="ph">🐈</span>`;
+
+  return `
+    <article class="card${adopt ? " adopt" : ""}">
+      <div class="photo">${img}${adopt ? '<span class="badge">Adopt me</span>' : ""}</div>
+      <div class="body">
+        <p class="name">${esc(name)} ${sex}</p>
+        ${c.Status ? `<p class="status">${esc(c.Status)}</p>` : ""}
+        <dl>${details}</dl>
+      </div>
+    </article>`;
+}
+
+function render() {
+  const q = document.getElementById("search").value.trim().toLowerCase();
+  const adoptOnly = document.getElementById("adoptOnly").getAttribute("aria-pressed") === "true";
+  const main = document.getElementById("main");
+
+  const match = c => {
+    if (adoptOnly && !isYes(c["Up for adoption?"])) return false;
+    if (!q) return true;
+    return Object.values(c).some(v => String(v).toLowerCase().includes(q));
+  };
+
+  let html = "";
+  let shown = 0;
+  for (const t of TABS) {
+    const cats = ALL.filter(c => c.__tab === t.gid && match(c));
+    if (!cats.length) continue;
+    shown += cats.length;
+    html += `
+      <section>
+        <div class="section-title">
+          <h2>${t.emoji} ${t.title}</h2>
+          <span class="count">${cats.length} · ${t.blurb}</span>
+        </div>
+        <div class="grid">${cats.map(card).join("")}</div>
+      </section>`;
+  }
+  main.innerHTML = shown ? html : `<div class="state">No cats match.</div>`;
+}
+
+document.getElementById("search").addEventListener("input", render);
+document.getElementById("adoptOnly").addEventListener("click", e => {
+  const btn = e.currentTarget;
+  btn.setAttribute("aria-pressed", btn.getAttribute("aria-pressed") === "true" ? "false" : "true");
+  render();
+});
+
+load();
+</script>

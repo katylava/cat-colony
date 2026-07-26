@@ -1,0 +1,20 @@
+# Our Cats
+
+A live web view of a cat-colony Google Sheet. Frontend-only, hosted on GitHub Pages.
+
+- **Data is live.** `index.html` reads the four data tabs straight from the sheet on every page load, so edits show up on refresh with no rebuild.
+- **Photos need a refresh step.** The sheet stores photos as Google Photos share links, which browsers can't turn into embeddable images. `build_photos.py` resolves them once into `photos.json`, which the page loads.
+
+## Refreshing photos
+
+Run this whenever you add a cat or change a photo in the sheet, then commit `photos.json`:
+
+```sh
+python build_photos.py
+```
+
+## Files
+
+- `index.html` — the whole app (plain HTML/CSS/JS, no build step)
+- `build_photos.py` — resolves sheet share links → `photos.json`
+- `photos.json` — generated map of cat name → embeddable image URL
