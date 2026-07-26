@@ -118,7 +118,10 @@
   }
   .pill.ok { background: var(--ok-soft); border-color: transparent; color: var(--ok); }
   .pill.warn { background: var(--warn-soft); border-color: transparent; color: var(--warn); }
-  .status { color: var(--muted); font-size: .9rem; margin: 0 0 10px; }
+  .status { font-size: .9rem; margin: 0 0 10px; }
+  .status .slabel { display: block; text-transform: uppercase; letter-spacing: .04em; font-size: .66rem; color: var(--muted); margin-bottom: 1px; }
+  .status .sval { color: var(--text); }
+  .statement { font-size: .9rem; line-height: 1.45; margin: 0 0 12px; padding-left: 10px; border-left: 2px solid var(--line); color: var(--text); }
   dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: .84rem; }
   dt { color: var(--muted); }
   dd { margin: 0; }
@@ -140,7 +143,7 @@
   <div class="state" id="state">Loading…</div>
 </main>
 
-<div class="wrap"><footer>Live from a shared spreadsheet. Last loaded <span id="loaded"></span>.</footer></div>
+<div class="wrap"><footer>Carrollton, TX</footer></div>
 
 <script>
 const SHEET_ID = "1UHlnzkYfQK-DDTvkqu8x-IDl3tB7L8fdiBQw_-V9GzY";
@@ -203,8 +206,6 @@ async function load() {
     ]);
     PHOTOS = photos;
     VIEWS.forEach((v, i) => { BYVIEW[v.key] = data[i].filter(r => r.Name); });
-    document.getElementById("loaded").textContent =
-      new Date().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
     document.getElementById("sub").textContent =
       `${BYVIEW.colony.length} cats in the colony · ${BYVIEW.adopted.length} adopted · ${BYVIEW.memoriam.length} remembered`;
     renderNav();
@@ -232,7 +233,9 @@ function statsStrip() {
   const total = colony.length;
   const fixed = colony.filter(c => isYes(c["Neutered?"])).length;
   const waiting = colony.filter(c => isProgress(c["Neutered?"])).length;
-  const inCare = colony.filter(c => lower(c.Status).includes("inside")).length;
+  // Cats currently available to adopt, across the living-cat screens.
+  const upForAdoption = VIEWS.reduce((n, v) =>
+    n + BYVIEW[v.key].filter(c => isYes(c["Up for adoption?"])).length, 0);
   // Every cat I've ever had fixed — current colony, adopted, and gone alike.
   const fixedAllTime = VIEWS.reduce((n, v) =>
     n + BYVIEW[v.key].filter(c => isYes(c["Neutered?"])).length, 0);
@@ -256,7 +259,7 @@ function statsStrip() {
     { num: total, lbl: "in the colony now" },
     { html: colonyTile },
     { num: fixedAllTime, lbl: "spayed / neutered, all-time" },
-    { num: inCare, lbl: "in foster care now" },
+    { num: upForAdoption, lbl: "up for adoption" },
     { num: BYVIEW.adopted.length, lbl: "adopted into my home" },
     { num: BYVIEW.memoriam.length, lbl: "remembered" },
   ];
@@ -281,7 +284,8 @@ function card(c, showNeg) {
   const pillObjs = [];
   if (np && (np.cls === "ok" || showNeg)) pillObjs.push(np);  // ✓ always; negatives only if actionable
   const pills = pillObjs.map(p => `<span class="pill ${p.cls}">${p.icon} ${p.label}</span>`).join("");
-  const skip = new Set(["Photo", "Name", "Sex", "Status", "Neutered?", "Up for adoption?"]);
+  // Status and Statement get their own display; everything else lists generically.
+  const skip = new Set(["Photo", "Name", "Sex", "Status", "Statement", "Neutered?", "Up for adoption?"]);
   const details = Object.keys(c).filter(k => k && !skip.has(k) && c[k])
     .map(k => `<dt>${esc(k.replace(/\?$/, ""))}</dt><dd>${esc(c[k])}</dd>`).join("");
   return `<article class="card">
@@ -289,7 +293,8 @@ function card(c, showNeg) {
     <div class="body">
       <p class="name">${esc(name)}${c.Sex ? `<span class="sex">${esc(c.Sex)}</span>` : ""}</p>
       ${pills ? `<div class="pills">${pills}</div>` : ""}
-      ${c.Status ? `<p class="status">${esc(c.Status)}</p>` : ""}
+      ${c.Status ? `<div class="status"><span class="slabel">Status</span><span class="sval">${esc(c.Status)}</span></div>` : ""}
+      ${c.Statement ? `<p class="statement">${esc(c.Statement)}</p>` : ""}
       <dl>${details}</dl>
     </div>
   </article>`;
