@@ -226,13 +226,13 @@ function renderNav() {
 
 function statsStrip() {
   const colony = BYVIEW.colony;
-  const fixed = colony.filter(c => isYes(c["Neutered?"])).length;
   const indoors = colony.filter(c => lower(c.Status).includes("inside")).length;
-  const pct = colony.length ? Math.round((fixed / colony.length) * 100) : 0;
+  // Every cat I've ever had fixed — current colony, adopted, and gone alike.
+  const fixedAllTime = VIEWS.reduce((n, v) =>
+    n + BYVIEW[v.key].filter(c => isYes(c["Neutered?"])).length, 0);
   const tiles = [
     { num: colony.length, lbl: "in the colony now" },
-    { num: `${fixed}<span style="font-size:1rem;color:var(--muted)"> / ${colony.length}</span>`,
-      lbl: "spayed / neutered", meter: pct },
+    { num: fixedAllTime, lbl: "cats I've spayed / neutered" },
     { num: indoors, lbl: "fostered indoors now" },
     { num: BYVIEW.adopted.length, lbl: "adopted into my home" },
     { num: BYVIEW.memoriam.length, lbl: "remembered" },
@@ -245,7 +245,9 @@ function statsStrip() {
     </div>`).join("")}</div>`;
 }
 
-function card(c) {
+// showNeg: whether "not yet fixed" / "fixing soon" pills make sense here. They're
+// actionable only for living cats (colony, visitors) — never for adopted or gone ones.
+function card(c, showNeg) {
   const name = c.Name;
   const photo = PHOTOS[name];
   const adopt = isYes(c["Up for adoption?"]);
@@ -253,8 +255,12 @@ function card(c) {
     ? `<img loading="lazy" src="${esc(photo)}=w500" alt="${esc(name)}">`
     : `<span class="ph">🐈</span>`;
   const tags = adopt ? `<div class="corner"><span class="tag">Adoptable</span></div>` : "";
-  const pills = [neuterPill(c["Neutered?"]), locPill(c.Status)].filter(Boolean).map(p =>
-    `<span class="pill ${p.cls}">${p.icon} ${p.label}</span>`).join("");
+  const np = neuterPill(c["Neutered?"]);
+  const pillObjs = [];
+  if (np && (np.cls === "ok" || showNeg)) pillObjs.push(np);  // ✓ always; negatives only if actionable
+  const lp = locPill(c.Status);
+  if (lp) pillObjs.push(lp);
+  const pills = pillObjs.map(p => `<span class="pill ${p.cls}">${p.icon} ${p.label}</span>`).join("");
   const skip = new Set(["Photo", "Name", "Sex", "Status", "Neutered?", "Up for adoption?"]);
   const details = Object.keys(c).filter(k => k && !skip.has(k) && c[k])
     .map(k => `<dt>${esc(k.replace(/\?$/, ""))}</dt><dd>${esc(c[k])}</dd>`).join("");
@@ -295,7 +301,7 @@ function route() {
       <input type="search" id="search" placeholder="Search names, status, litter…" autocomplete="off" value="${esc(SEARCH)}">
       ${showAdoptChip ? `<button class="chip" id="adoptOnly" aria-pressed="${ADOPT_ONLY}">💜 Up for adoption</button>` : ""}
     </div>
-    ${rows.length ? `<div class="grid">${rows.map(card).join("")}</div>`
+    ${rows.length ? `<div class="grid">${rows.map(c => card(c, showAdoptChip)).join("")}</div>`
                   : `<div class="state">No cats match.</div>`}`;
 
   const search = document.getElementById("search");
