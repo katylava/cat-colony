@@ -10,8 +10,10 @@
     --line: #ece5db;
     --accent: #d98324;
     --accent-soft: #fbe9d3;
-    --adopt: #2e8b57;
-    --adopt-soft: #dff0e6;
+    --ok: #2e8b57;
+    --ok-soft: #dff0e6;
+    --warn: #b8791b;
+    --warn-soft: #f7ecd6;
     --shadow: 0 1px 2px rgba(0,0,0,.05), 0 6px 18px rgba(0,0,0,.05);
   }
   @media (prefers-color-scheme: dark) {
@@ -23,244 +25,290 @@
       --line: #35302a;
       --accent: #eaa04c;
       --accent-soft: #3a2c19;
-      --adopt: #63c98d;
-      --adopt-soft: #1c3327;
+      --ok: #63c98d;
+      --ok-soft: #1c3327;
+      --warn: #e0af5c;
+      --warn-soft: #2f2513;
       --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.35);
     }
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--text);
+    margin: 0; background: var(--bg); color: var(--text);
     font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
   }
-  header {
-    padding: 32px 20px 8px;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-  h1 { font-size: 1.9rem; margin: 0 0 4px; letter-spacing: -.02em; }
-  .sub { color: var(--muted); margin: 0; }
-  .controls {
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+  header { padding: 30px 0 4px; }
+  h1 { font-size: 1.8rem; margin: 0; letter-spacing: -.02em; }
+  .sub { color: var(--muted); margin: 4px 0 0; }
+
+  nav {
     position: sticky; top: 0; z-index: 5;
     background: color-mix(in srgb, var(--bg) 88%, transparent);
     backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--line);
-    padding: 12px 20px;
-    margin-top: 16px;
+    margin-top: 18px;
   }
-  .controls-inner {
-    max-width: 1200px; margin: 0 auto;
-    display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  .nav-inner { display: flex; gap: 6px; overflow-x: auto; padding: 10px 0; }
+  .nav-inner a {
+    text-decoration: none; color: var(--text); white-space: nowrap;
+    padding: 8px 15px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--card); font-size: .92rem;
   }
+  .nav-inner a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .nav-inner .n { opacity: .6; font-variant-numeric: tabular-nums; }
+  .nav-inner a[aria-current="page"] .n { opacity: .85; }
+
+  /* Stat tiles: figures in ink, one accent, one single-hue meter. No category color-coding. */
+  .stats {
+    display: grid; gap: 12px; margin: 22px 0 8px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  .stat {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 15px 16px; box-shadow: var(--shadow);
+  }
+  .stat .num { font-size: 1.9rem; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .stat .lbl { color: var(--muted); font-size: .82rem; margin-top: 2px; }
+  .meter { height: 6px; border-radius: 999px; background: var(--line); margin-top: 10px; overflow: hidden; }
+  .meter > span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 20px 0 4px; }
   input[type=search] {
-    flex: 1 1 220px; min-width: 160px;
-    padding: 9px 12px; border-radius: 10px;
-    border: 1px solid var(--line); background: var(--card); color: var(--text);
-    font-size: .95rem;
+    flex: 1 1 220px; min-width: 160px; padding: 9px 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--card); color: var(--text); font-size: .95rem;
   }
   .chip {
-    padding: 8px 14px; border-radius: 999px; cursor: pointer;
+    padding: 8px 14px; border-radius: 999px; cursor: pointer; font-size: .9rem; white-space: nowrap;
     border: 1px solid var(--line); background: var(--card); color: var(--text);
-    font-size: .9rem; white-space: nowrap;
   }
   .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
-  main { max-width: 1200px; margin: 0 auto; padding: 8px 20px 60px; }
-  .section-title {
-    display: flex; align-items: baseline; gap: 10px;
-    margin: 34px 0 14px; padding-bottom: 8px; border-bottom: 2px solid var(--line);
-  }
-  .section-title h2 { font-size: 1.25rem; margin: 0; letter-spacing: -.01em; }
-  .section-title .count { color: var(--muted); font-size: .95rem; }
-  .grid {
-    display: grid; gap: 18px;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  }
+
+  .view-blurb { color: var(--muted); margin: 16px 0 2px; max-width: 60ch; }
+
+  .grid { display: grid; gap: 18px; margin: 16px 0 60px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
   .card {
     background: var(--card); border: 1px solid var(--line); border-radius: 16px;
-    overflow: hidden; box-shadow: var(--shadow);
-    display: flex; flex-direction: column;
+    overflow: hidden; box-shadow: var(--shadow); display: flex; flex-direction: column;
   }
-  .card.adopt { border-color: var(--adopt); }
   .photo {
     aspect-ratio: 1 / 1; background: var(--accent-soft);
-    display: flex; align-items: center; justify-content: center;
-    overflow: hidden; position: relative;
+    display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;
   }
   .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .photo .ph { font-size: 3rem; opacity: .5; }
-  .badge {
-    position: absolute; top: 10px; left: 10px;
-    background: var(--adopt); color: #fff; font-size: .72rem; font-weight: 600;
-    padding: 4px 9px; border-radius: 999px; letter-spacing: .02em;
-    box-shadow: 0 1px 4px rgba(0,0,0,.2);
+  .corner { position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .tag {
+    font-size: .7rem; font-weight: 600; padding: 4px 8px; border-radius: 999px;
+    letter-spacing: .02em; box-shadow: 0 1px 4px rgba(0,0,0,.18); background: var(--accent); color: #fff;
   }
   .body { padding: 13px 15px 16px; }
-  .name { font-size: 1.08rem; font-weight: 700; margin: 0 0 2px; display: flex; align-items: center; gap: 7px; }
-  .sex { font-size: .95rem; color: var(--muted); font-weight: 500; }
+  .name { font-size: 1.08rem; font-weight: 700; margin: 0 0 5px; display: flex; align-items: baseline; gap: 7px; }
+  .name .sex { font-size: .9rem; color: var(--muted); font-weight: 500; }
+  .pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 9px; }
+  .pill {
+    font-size: .74rem; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line);
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .pill.ok { background: var(--ok-soft); border-color: transparent; color: var(--ok); }
+  .pill.warn { background: var(--warn-soft); border-color: transparent; color: var(--warn); }
+  .pill.loc { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
   .status { color: var(--muted); font-size: .9rem; margin: 0 0 10px; }
   dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; font-size: .84rem; }
   dt { color: var(--muted); }
   dd { margin: 0; }
   .state { text-align: center; color: var(--muted); padding: 60px 20px; }
   .state.err { color: #c0392b; }
-  a.src { color: var(--accent); text-decoration: none; }
-  footer { max-width: 1200px; margin: 0 auto; padding: 0 20px 50px; color: var(--muted); font-size: .82rem; }
+  footer { color: var(--muted); font-size: .82rem; padding: 0 0 50px; }
 </style>
 
-<header>
-  <h1>🐾 The Cat Colony</h1>
-  <p class="sub" id="sub">Loading from the spreadsheet…</p>
-</header>
-
-<div class="controls">
-  <div class="controls-inner">
-    <input type="search" id="search" placeholder="Search by name, status, litter…" autocomplete="off">
-    <button class="chip" id="adoptOnly" aria-pressed="false">💜 Up for adoption</button>
-  </div>
+<div class="wrap">
+  <header>
+    <h1>🐾 The Cat Colony</h1>
+    <p class="sub" id="sub">Loading…</p>
+  </header>
 </div>
 
-<main id="main">
+<nav><div class="wrap"><div class="nav-inner" id="nav"></div></div></nav>
+
+<main class="wrap" id="main">
   <div class="state" id="state">Loading…</div>
 </main>
 
-<footer>
-  Data is read live from a Google Sheet on each load. Photos refresh when the maintainer re-runs the photo script.
-</footer>
+<div class="wrap"><footer>Live from a shared spreadsheet. Last loaded <span id="loaded"></span>.</footer></div>
 
 <script>
 const SHEET_ID = "1UHlnzkYfQK-DDTvkqu8x-IDl3tB7L8fdiBQw_-V9GzY";
 
-// Each tab of the sheet, in display order. `emoji`/`title` label the section.
-const TABS = [
-  { gid: "0",          title: "Current Colony",     emoji: "🏡", blurb: "Cats living here now" },
-  { gid: "1859449606", title: "Occasional Visitors", emoji: "👀", blurb: "Seen now and then" },
-  { gid: "679410925",  title: "Adopted",             emoji: "❤️", blurb: "Found their homes" },
-  { gid: "2113017747", title: "In Memoriam",         emoji: "🕊️", blurb: "Gone but remembered" },
+// Views == screens. `colony` is home and carries the stats strip.
+const VIEWS = [
+  { key: "colony",   gid: "0",          nav: "Colony",        title: "The Colony",
+    blurb: "Cats living in the colony now." },
+  { key: "adopted",  gid: "679410925",  nav: "Adopted by Me", title: "Adopted by Me",
+    blurb: "Cats I took into my own home — including some who needed surgery or socializing from feral." },
+  { key: "visitors", gid: "1859449606", nav: "Visitors",      title: "Occasional Visitors",
+    blurb: "Cats that pass through now and then." },
+  { key: "memoriam", gid: "2113017747", nav: "In Memoriam",   title: "In Memoriam",
+    blurb: "Cats no longer with us, and how they were lost." },
 ];
 
-const gvizUrl = gid =>
-  `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`;
+const gvizUrl = gid => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`;
 
-// gviz wraps its JSON in `google.visualization.Query.setResponse(<json>);`
 function parseGviz(text) {
   const json = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
   const cols = json.table.cols;
   let rows = json.table.rows.map(r => r.c);
   let headers;
-  // gviz sometimes promotes the header into column labels, sometimes leaves it
-  // as the first data row. Handle both so we always get clean field names.
-  if (cols.some(c => c.label)) {
-    headers = cols.map((c, i) => c.label || `col${i}`);
-  } else {
-    headers = (rows.shift() || []).map(c => (c && c.v != null ? String(c.v) : ""));
-  }
+  if (cols.some(c => c.label)) headers = cols.map((c, i) => c.label || `col${i}`);
+  else headers = (rows.shift() || []).map(c => (c && c.v != null ? String(c.v) : ""));
   return rows.map(cells => {
-    const obj = {};
-    headers.forEach((h, i) => {
-      const cell = cells[i];
-      obj[h] = cell && cell.v != null ? String(cell.v).trim() : "";
-    });
-    return obj;
+    const o = {};
+    headers.forEach((h, i) => { const c = cells[i]; o[h] = c && c.v != null ? String(c.v).trim() : ""; });
+    return o;
   });
 }
 
-const isYes = v => /^(yes|y|true)$/i.test((v || "").trim());
 const esc = s => (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const isYes = v => /^(yes|y|true)$/i.test((v || "").trim());
+const isSoon = v => /week|soon|scheduled|pending/i.test(v || "");
+const lower = v => (v || "").toLowerCase();
 
-let ALL = [];       // flat list of {tab, fields...}
+// Fixed status → pill. Text label always present, never color alone.
+function neuterPill(v) {
+  if (isYes(v)) return { cls: "ok", icon: "✓", label: "Spayed/neutered" };
+  if (isSoon(v)) return { cls: "warn", icon: "◷", label: "Fixing soon" };
+  if (/^no?$/i.test((v || "").trim())) return { cls: "warn", icon: "•", label: "Not yet fixed" };
+  return null;
+}
+function locPill(status) {
+  const s = lower(status);
+  if (s.includes("inside")) return { cls: "loc", icon: "🏠", label: "Indoors" };
+  if (s.includes("outside")) return { cls: "loc", icon: "🌳", label: "Outdoors" };
+  return null;
+}
+
+let BYVIEW = {};   // key -> [rows]
 let PHOTOS = {};
 
 async function load() {
   const state = document.getElementById("state");
   try {
-    const [photos, ...tabData] = await Promise.all([
+    const [photos, ...data] = await Promise.all([
       fetch("photos.json").then(r => r.ok ? r.json() : {}).catch(() => ({})),
-      ...TABS.map(t => fetch(gvizUrl(t.gid)).then(r => r.text()).then(parseGviz)),
+      ...VIEWS.map(v => fetch(gvizUrl(v.gid)).then(r => r.text()).then(parseGviz)),
     ]);
     PHOTOS = photos;
-    ALL = [];
-    tabData.forEach((rows, i) => {
-      rows.forEach(row => {
-        if (!row.Name) return;             // skip blank rows
-        ALL.push({ __tab: TABS[i].gid, ...row });
-      });
-    });
-    render();
-    const adoptCount = ALL.filter(c => isYes(c["Up for adoption?"])).length;
+    VIEWS.forEach((v, i) => { BYVIEW[v.key] = data[i].filter(r => r.Name); });
+    document.getElementById("loaded").textContent =
+      new Date().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
     document.getElementById("sub").textContent =
-      `${ALL.length} cats` + (adoptCount ? ` · ${adoptCount} up for adoption` : "");
+      `${BYVIEW.colony.length} cats in the colony · ${BYVIEW.adopted.length} adopted · ${BYVIEW.memoriam.length} remembered`;
+    renderNav();
+    window.addEventListener("hashchange", route);
+    route();
   } catch (e) {
     state.className = "state err";
     state.textContent = "Couldn't load the sheet. Make sure it's still shared publicly. (" + e.message + ")";
   }
 }
 
+function currentView() {
+  const key = location.hash.replace("#", "") || "colony";
+  return VIEWS.find(v => v.key === key) || VIEWS[0];
+}
+
+function renderNav() {
+  document.getElementById("nav").innerHTML = VIEWS.map(v =>
+    `<a href="#${v.key}" data-key="${v.key}">${v.nav} <span class="n">${BYVIEW[v.key].length}</span></a>`
+  ).join("");
+}
+
+function statsStrip() {
+  const colony = BYVIEW.colony;
+  const fixed = colony.filter(c => isYes(c["Neutered?"])).length;
+  const indoors = colony.filter(c => lower(c.Status).includes("inside")).length;
+  const pct = colony.length ? Math.round((fixed / colony.length) * 100) : 0;
+  const tiles = [
+    { num: colony.length, lbl: "in the colony now" },
+    { num: `${fixed}<span style="font-size:1rem;color:var(--muted)"> / ${colony.length}</span>`,
+      lbl: "spayed / neutered", meter: pct },
+    { num: indoors, lbl: "fostered indoors now" },
+    { num: BYVIEW.adopted.length, lbl: "adopted into my home" },
+    { num: BYVIEW.memoriam.length, lbl: "remembered" },
+  ];
+  return `<div class="stats">${tiles.map(t => `
+    <div class="stat">
+      <div class="num">${t.num}</div>
+      <div class="lbl">${t.lbl}</div>
+      ${t.meter != null ? `<div class="meter"><span style="width:${t.meter}%"></span></div>` : ""}
+    </div>`).join("")}</div>`;
+}
+
 function card(c) {
   const name = c.Name;
   const photo = PHOTOS[name];
   const adopt = isYes(c["Up for adoption?"]);
-  const sex = c.Sex ? `<span class="sex">${esc(c.Sex)}</span>` : "";
-
-  // Detail rows: every non-empty field except the ones shown elsewhere.
-  const skip = new Set(["Photo", "Name", "Sex", "Status", "Up for adoption?", "__tab"]);
-  const details = Object.keys(c)
-    .filter(k => !skip.has(k) && c[k])
-    .map(k => `<dt>${esc(k.replace(/\?$/, ""))}</dt><dd>${esc(c[k])}</dd>`)
-    .join("");
-
   const img = photo
     ? `<img loading="lazy" src="${esc(photo)}=w500" alt="${esc(name)}">`
     : `<span class="ph">🐈</span>`;
-
-  return `
-    <article class="card${adopt ? " adopt" : ""}">
-      <div class="photo">${img}${adopt ? '<span class="badge">Adopt me</span>' : ""}</div>
-      <div class="body">
-        <p class="name">${esc(name)} ${sex}</p>
-        ${c.Status ? `<p class="status">${esc(c.Status)}</p>` : ""}
-        <dl>${details}</dl>
-      </div>
-    </article>`;
+  const tags = adopt ? `<div class="corner"><span class="tag">Adoptable</span></div>` : "";
+  const pills = [neuterPill(c["Neutered?"]), locPill(c.Status)].filter(Boolean).map(p =>
+    `<span class="pill ${p.cls}">${p.icon} ${p.label}</span>`).join("");
+  const skip = new Set(["Photo", "Name", "Sex", "Status", "Neutered?", "Up for adoption?"]);
+  const details = Object.keys(c).filter(k => k && !skip.has(k) && c[k])
+    .map(k => `<dt>${esc(k.replace(/\?$/, ""))}</dt><dd>${esc(c[k])}</dd>`).join("");
+  return `<article class="card">
+    <div class="photo">${img}${tags}</div>
+    <div class="body">
+      <p class="name">${esc(name)}${c.Sex ? `<span class="sex">${esc(c.Sex)}</span>` : ""}</p>
+      ${pills ? `<div class="pills">${pills}</div>` : ""}
+      ${c.Status ? `<p class="status">${esc(c.Status)}</p>` : ""}
+      <dl>${details}</dl>
+    </div>
+  </article>`;
 }
 
-function render() {
-  const q = document.getElementById("search").value.trim().toLowerCase();
-  const adoptOnly = document.getElementById("adoptOnly").getAttribute("aria-pressed") === "true";
+// State that must survive a re-render (search box is rebuilt on each route()).
+let SEARCH = "";
+let ADOPT_ONLY = false;
+let SEARCH_FOCUSED = false;
+
+function route() {
+  const v = currentView();
+  if (!location.hash) location.hash = "#colony";
+  document.querySelectorAll("#nav a").forEach(a =>
+    a.setAttribute("aria-current", a.dataset.key === v.key ? "page" : "false"));
+
+  const rows = BYVIEW[v.key].filter(c => {
+    if (ADOPT_ONLY && !isYes(c["Up for adoption?"])) return false;
+    if (!SEARCH) return true;
+    return Object.values(c).some(val => String(val).toLowerCase().includes(SEARCH));
+  });
+
+  const showAdoptChip = v.key === "colony" || v.key === "visitors";
   const main = document.getElementById("main");
+  main.innerHTML = `
+    ${v.key === "colony" ? statsStrip() : ""}
+    <p class="view-blurb">${v.blurb}</p>
+    <div class="toolbar">
+      <input type="search" id="search" placeholder="Search names, status, litter…" autocomplete="off" value="${esc(SEARCH)}">
+      ${showAdoptChip ? `<button class="chip" id="adoptOnly" aria-pressed="${ADOPT_ONLY}">💜 Up for adoption</button>` : ""}
+    </div>
+    ${rows.length ? `<div class="grid">${rows.map(card).join("")}</div>`
+                  : `<div class="state">No cats match.</div>`}`;
 
-  const match = c => {
-    if (adoptOnly && !isYes(c["Up for adoption?"])) return false;
-    if (!q) return true;
-    return Object.values(c).some(v => String(v).toLowerCase().includes(q));
-  };
+  const search = document.getElementById("search");
+  search.addEventListener("input", () => { SEARCH = search.value.trim().toLowerCase(); SEARCH_FOCUSED = true; route(); });
+  // Only grab focus back mid-typing — never on initial load or nav (avoids popping the mobile keyboard).
+  if (SEARCH_FOCUSED) { search.focus(); search.setSelectionRange(search.value.length, search.value.length); }
 
-  let html = "";
-  let shown = 0;
-  for (const t of TABS) {
-    const cats = ALL.filter(c => c.__tab === t.gid && match(c));
-    if (!cats.length) continue;
-    shown += cats.length;
-    html += `
-      <section>
-        <div class="section-title">
-          <h2>${t.emoji} ${t.title}</h2>
-          <span class="count">${cats.length} · ${t.blurb}</span>
-        </div>
-        <div class="grid">${cats.map(card).join("")}</div>
-      </section>`;
-  }
-  main.innerHTML = shown ? html : `<div class="state">No cats match.</div>`;
+  const chip = document.getElementById("adoptOnly");
+  if (chip) chip.addEventListener("click", () => { ADOPT_ONLY = !ADOPT_ONLY; route(); });
 }
 
-document.getElementById("search").addEventListener("input", render);
-document.getElementById("adoptOnly").addEventListener("click", e => {
-  const btn = e.currentTarget;
-  btn.setAttribute("aria-pressed", btn.getAttribute("aria-pressed") === "true" ? "false" : "true");
-  render();
-});
+// Reset transient filters when switching screens so each screen starts clean.
+window.addEventListener("hashchange", () => { SEARCH = ""; ADOPT_ONLY = false; SEARCH_FOCUSED = false; });
 
 load();
 </script>
