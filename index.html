@@ -84,12 +84,6 @@
     flex: 1 1 220px; min-width: 160px; padding: 9px 12px; border-radius: 10px;
     border: 1px solid var(--line); background: var(--card); color: var(--text); font-size: .95rem;
   }
-  .chip {
-    padding: 8px 14px; border-radius: 999px; cursor: pointer; font-size: .9rem; white-space: nowrap;
-    border: 1px solid var(--line); background: var(--card); color: var(--text);
-  }
-  .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
-
   .view-blurb { color: var(--muted); margin: 16px 0 2px; max-width: 60ch; }
 
   /* Search spans every screen; each match is grouped under its section so the
@@ -182,6 +176,14 @@ const VIEWS = [
     blurb: "Named colony cats that are no longer with us." },
 ];
 
+// A synthetic screen with no sheet tab of its own: the cats flagged up for
+// adoption, gathered across the living-cat screens and surfaced as its own nav
+// pill. VIEWS stays the four real data tabs (they drive the fetch); NAV is what
+// the nav bar renders.
+const ADOPT_VIEW = { key: "adopt", nav: "Up for Adoption", title: "Up for Adoption",
+  blurb: "Colony cats currently looking for homes." };
+const NAV = [...VIEWS, ADOPT_VIEW];
+
 const gvizUrl = gid => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`;
 
 function parseGviz(text) {
@@ -234,6 +236,10 @@ async function load() {
     ]);
     PHOTOS = photos;
     VIEWS.forEach((v, i) => { BYVIEW[v.key] = data[i].filter(r => r.Name); });
+    // The adoption screen has no tab of its own — it's derived: every cat flagged
+    // up for adoption. Those cats only ever live on one real tab, so there's
+    // nothing to de-dupe; a cat simply shows on both its home screen and here.
+    BYVIEW.adopt = VIEWS.flatMap(v => BYVIEW[v.key].filter(c => isYes(c["Up for adoption?"])));
     document.getElementById("sub").textContent =
       `${BYVIEW.colony.length} cats in the colony · ${BYVIEW.adopted.length} adopted · ${BYVIEW.memoriam.length} remembered`;
     renderNav();
@@ -251,11 +257,11 @@ async function load() {
 
 function currentView() {
   const key = location.hash.replace("#", "") || "colony";
-  return VIEWS.find(v => v.key === key) || VIEWS[0];
+  return NAV.find(v => v.key === key) || VIEWS[0];
 }
 
 function renderNav() {
-  document.getElementById("nav").innerHTML = VIEWS.map(v =>
+  document.getElementById("nav").innerHTML = NAV.map(v =>
     `<a href="#${v.key}" data-key="${v.key}">${v.nav} <span class="n">${BYVIEW[v.key].length}</span></a>`
   ).join("");
 }
@@ -265,9 +271,8 @@ function statsStrip() {
   const total = colony.length;
   const fixed = colony.filter(c => isYes(c["Neutered?"])).length;
   const waiting = colony.filter(c => isProgress(c["Neutered?"])).length;
-  // Cats currently available to adopt, across the living-cat screens.
-  const upForAdoption = VIEWS.reduce((n, v) =>
-    n + BYVIEW[v.key].filter(c => isYes(c["Up for adoption?"])).length, 0);
+  // Cats currently available to adopt (the derived adoption screen).
+  const upForAdoption = BYVIEW.adopt.length;
   // Every cat I've ever had fixed — current colony, adopted, and gone alike.
   const fixedAllTime = VIEWS.reduce((n, v) =>
     n + BYVIEW[v.key].filter(c => isYes(c["Neutered?"])).length, 0);
@@ -303,8 +308,8 @@ function statsStrip() {
 }
 
 // `view` is the current screen. Neuter pills read differently per screen: a ✓
-// shows everywhere; "not yet fixed" is a colony to-do; feral visitors can't be
-// trapped at all; adopted/gone cats show no negative.
+// shows everywhere; "not yet fixed" is a colony/adoption to-do; feral visitors
+// can't be trapped at all; adopted/gone cats show no negative.
 function card(c, view) {
   const name = c.Name;
   const photo = PHOTOS[name];
@@ -323,7 +328,7 @@ function card(c, view) {
     pillObjs.push(np);                                        // ✓ fixed — shown on every screen
   } else if (view.key === "visitors") {
     pillObjs.push({ cls: "warn", icon: "•", label: "Feral — can't trap" });
-  } else if (view.key === "colony" && np) {
+  } else if ((view.key === "colony" || view.key === "adopt") && np) {
     pillObjs.push(np);                                        // not yet fixed / trapped & waiting
   }
   const pills = pillObjs.map(p => `<span class="pill ${p.cls}">${p.icon} ${p.label}</span>`).join("");
@@ -353,7 +358,6 @@ function card(c, view) {
 
 // Search state is global — the box lives above the nav and searches every screen.
 let SEARCH = "";
-let ADOPT_ONLY = false;
 
 function route() {
   const v = currentView();
@@ -362,18 +366,15 @@ function route() {
     a.setAttribute("aria-current", a.dataset.key === v.key ? "page" : "false"));
 
   const searching = !!SEARCH;
-  const match = c => {
-    if (ADOPT_ONLY && !isYes(c["Up for adoption?"])) return false;
-    if (!SEARCH) return true;
-    return Object.values(c).some(val => String(val).toLowerCase().includes(SEARCH));
-  };
+  const match = c => !SEARCH ||
+    Object.values(c).some(val => String(val).toLowerCase().includes(SEARCH));
 
   // A search broadens automatically to every screen, and results are grouped by
   // section so each match's screen stays clear. With no search it's just the
   // current screen. Cards render with their own view for screen-aware pills.
   let body, hasResults;
   if (searching) {
-    const sections = VIEWS
+    const sections = NAV
       .map(view => ({ view, rows: BYVIEW[view.key].filter(match) }))
       .filter(s => s.rows.length);
     hasResults = sections.length > 0;
@@ -388,21 +389,16 @@ function route() {
     body = `<div class="grid">${rows.map(c => card(c, v)).join("")}</div>`;
   }
 
-  const showAdoptChip = v.key === "colony";  // only the colony has adoptable cats
   const main = document.getElementById("main");
   main.innerHTML = `
     ${!searching && v.key === "colony" ? statsStrip() : ""}
     <p class="view-blurb">${searching ? "Showing matches across every section." : v.blurb}</p>
-    ${showAdoptChip ? `<div class="toolbar"><button class="chip" id="adoptOnly" aria-pressed="${ADOPT_ONLY}">💜 Up for adoption</button></div>` : ""}
     ${hasResults ? body : `<div class="state">No cats match.</div>`}`;
-
-  const chip = document.getElementById("adoptOnly");
-  if (chip) chip.addEventListener("click", () => { ADOPT_ONLY = !ADOPT_ONLY; route(); });
 }
 
 // Reset transient filters when switching screens so each screen starts clean.
 window.addEventListener("hashchange", () => {
-  SEARCH = ""; ADOPT_ONLY = false;
+  SEARCH = "";
   const s = document.getElementById("search"); if (s) s.value = "";
 });
 
