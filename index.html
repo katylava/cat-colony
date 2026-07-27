@@ -92,6 +92,18 @@
 
   .view-blurb { color: var(--muted); margin: 16px 0 2px; max-width: 60ch; }
 
+  /* Search spans every screen; each match is grouped under its section so the
+     screen a cat belongs to is always clear. */
+  .results { margin: 24px 0 10px; }
+  .results:last-of-type { margin-bottom: 60px; }
+  .section-head {
+    font-size: 1.15rem; font-weight: 700; letter-spacing: -.01em;
+    margin: 0; display: flex; align-items: baseline; gap: 8px;
+    padding-bottom: 8px; border-bottom: 1px solid var(--line);
+  }
+  .section-head .n { font-size: .9rem; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .results .grid { margin: 14px 0 0; }
+
   .grid { display: grid; gap: 18px; margin: 16px 0 60px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); }
   .card {
     background: var(--card); border: 1px solid var(--line); border-radius: 16px;
@@ -339,23 +351,43 @@ function route() {
   document.querySelectorAll("#nav a").forEach(a =>
     a.setAttribute("aria-current", a.dataset.key === v.key ? "page" : "false"));
 
-  const rows = BYVIEW[v.key].filter(c => {
+  const searching = !!SEARCH;
+  const match = c => {
     if (ADOPT_ONLY && !isYes(c["Up for adoption?"])) return false;
     if (!SEARCH) return true;
     return Object.values(c).some(val => String(val).toLowerCase().includes(SEARCH));
-  });
+  };
+
+  // A search broadens automatically to every screen, and results are grouped by
+  // section so each match's screen stays clear. With no search it's just the
+  // current screen. Cards render with their own view for screen-aware pills.
+  let body, hasResults;
+  if (searching) {
+    const sections = VIEWS
+      .map(view => ({ view, rows: BYVIEW[view.key].filter(match) }))
+      .filter(s => s.rows.length);
+    hasResults = sections.length > 0;
+    body = sections.map(s => `
+      <section class="results">
+        <h2 class="section-head">${s.view.title} <span class="n">${s.rows.length}</span></h2>
+        <div class="grid">${s.rows.map(c => card(c, s.view)).join("")}</div>
+      </section>`).join("");
+  } else {
+    const rows = BYVIEW[v.key].filter(match);
+    hasResults = rows.length > 0;
+    body = `<div class="grid">${rows.map(c => card(c, v)).join("")}</div>`;
+  }
 
   const showAdoptChip = v.key === "colony";  // only the colony has adoptable cats
   const main = document.getElementById("main");
   main.innerHTML = `
-    ${v.key === "colony" ? statsStrip() : ""}
-    <p class="view-blurb">${v.blurb}</p>
+    ${!searching && v.key === "colony" ? statsStrip() : ""}
+    <p class="view-blurb">${searching ? "Showing matches across every section." : v.blurb}</p>
     <div class="toolbar">
-      <input type="search" id="search" placeholder="Search names, status, litter…" autocomplete="off" value="${esc(SEARCH)}">
+      <input type="search" id="search" placeholder="Search all cats by name, status, litter…" autocomplete="off" value="${esc(SEARCH)}">
       ${showAdoptChip ? `<button class="chip" id="adoptOnly" aria-pressed="${ADOPT_ONLY}">💜 Up for adoption</button>` : ""}
     </div>
-    ${rows.length ? `<div class="grid">${rows.map(c => card(c, v)).join("")}</div>`
-                  : `<div class="state">No cats match.</div>`}`;
+    ${hasResults ? body : `<div class="state">No cats match.</div>`}`;
 
   const search = document.getElementById("search");
   search.addEventListener("input", () => { SEARCH = search.value.trim().toLowerCase(); SEARCH_FOCUSED = true; route(); });
