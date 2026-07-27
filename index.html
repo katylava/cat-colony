@@ -152,6 +152,13 @@
   </header>
 </div>
 
+<!-- Search is global — it spans every screen, so it sits above the screen pills. -->
+<div class="wrap">
+  <div class="toolbar">
+    <input type="search" id="search" placeholder="Search all cats by name, status, litter…" autocomplete="off">
+  </div>
+</div>
+
 <nav><div class="wrap"><div class="nav-inner" id="nav"></div></div></nav>
 
 <main class="wrap" id="main">
@@ -230,6 +237,10 @@ async function load() {
     document.getElementById("sub").textContent =
       `${BYVIEW.colony.length} cats in the colony · ${BYVIEW.adopted.length} adopted · ${BYVIEW.memoriam.length} remembered`;
     renderNav();
+    // The search box is persistent (it lives above the nav), so wire it once here
+    // rather than on every render. Typing re-routes with the new global query.
+    const search = document.getElementById("search");
+    search.addEventListener("input", () => { SEARCH = search.value.trim().toLowerCase(); route(); });
     window.addEventListener("hashchange", route);
     route();
   } catch (e) {
@@ -340,10 +351,9 @@ function card(c, view) {
   </article>`;
 }
 
-// State that must survive a re-render (search box is rebuilt on each route()).
+// Search state is global — the box lives above the nav and searches every screen.
 let SEARCH = "";
 let ADOPT_ONLY = false;
-let SEARCH_FOCUSED = false;
 
 function route() {
   const v = currentView();
@@ -381,25 +391,20 @@ function route() {
   const showAdoptChip = v.key === "colony";  // only the colony has adoptable cats
   const main = document.getElementById("main");
   main.innerHTML = `
-    <div class="toolbar">
-      <input type="search" id="search" placeholder="Search all cats by name, status, litter…" autocomplete="off" value="${esc(SEARCH)}">
-      ${showAdoptChip ? `<button class="chip" id="adoptOnly" aria-pressed="${ADOPT_ONLY}">💜 Up for adoption</button>` : ""}
-    </div>
     ${!searching && v.key === "colony" ? statsStrip() : ""}
     <p class="view-blurb">${searching ? "Showing matches across every section." : v.blurb}</p>
+    ${showAdoptChip ? `<div class="toolbar"><button class="chip" id="adoptOnly" aria-pressed="${ADOPT_ONLY}">💜 Up for adoption</button></div>` : ""}
     ${hasResults ? body : `<div class="state">No cats match.</div>`}`;
-
-  const search = document.getElementById("search");
-  search.addEventListener("input", () => { SEARCH = search.value.trim().toLowerCase(); SEARCH_FOCUSED = true; route(); });
-  // Only grab focus back mid-typing — never on initial load or nav (avoids popping the mobile keyboard).
-  if (SEARCH_FOCUSED) { search.focus(); search.setSelectionRange(search.value.length, search.value.length); }
 
   const chip = document.getElementById("adoptOnly");
   if (chip) chip.addEventListener("click", () => { ADOPT_ONLY = !ADOPT_ONLY; route(); });
 }
 
 // Reset transient filters when switching screens so each screen starts clean.
-window.addEventListener("hashchange", () => { SEARCH = ""; ADOPT_ONLY = false; SEARCH_FOCUSED = false; });
+window.addEventListener("hashchange", () => {
+  SEARCH = ""; ADOPT_ONLY = false;
+  const s = document.getElementById("search"); if (s) s.value = "";
+});
 
 load();
 </script>
