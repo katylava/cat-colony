@@ -39,9 +39,22 @@
     -webkit-font-smoothing: antialiased;
   }
   .wrap { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
-  header { padding: 30px 0 4px; }
+  header {
+    padding: 30px 0 4px; display: flex; flex-wrap: wrap;
+    align-items: flex-start; justify-content: space-between; gap: 10px 16px;
+  }
   h1 { font-size: 1.8rem; margin: 0; letter-spacing: -.02em; }
   .sub { color: var(--muted); margin: 4px 0 0; }
+  /* External link (opens a Google Form), so it borrows the nav-pill look but
+     sits apart from the in-site screen pills and carries an outbound marker. */
+  .contact {
+    flex-shrink: 0; text-decoration: none; color: var(--text); white-space: nowrap;
+    padding: 8px 15px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--card); font-size: .92rem; box-shadow: var(--shadow);
+    transition: border-color .15s ease, color .15s ease;
+  }
+  .contact:hover { border-color: var(--accent); color: var(--accent); }
+  .contact .ext { opacity: .6; font-size: .85em; }
 
   nav {
     position: sticky; top: 0; z-index: 5;
@@ -140,9 +153,11 @@
 
 <div class="wrap">
   <header>
-    <h1>🐾 Our Friendly Community Cat Colony</h1>
-    <p class="sub" id="sub">Loading…</p>
-    <a href="https://forms.gle/651qTXwfRUi73AGYA">Contact Form</a>
+    <div class="head-text">
+      <h1>🐾 Our Friendly Community Cat Colony</h1>
+      <p class="sub" id="sub">Loading…</p>
+    </div>
+    <a class="contact" href="https://forms.gle/651qTXwfRUi73AGYA" target="_blank" rel="noopener">Contact us <span class="ext" aria-hidden="true">↗</span></a>
   </header>
 </div>
 
