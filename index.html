@@ -153,13 +153,13 @@ const SHEET_ID = "1UHlnzkYfQK-DDTvkqu8x-IDl3tB7L8fdiBQw_-V9GzY";
 // Views == screens. `colony` is home and carries the stats strip.
 const VIEWS = [
   { key: "colony",   gid: "0",          nav: "Colony",        title: "The Colony",
-    blurb: "Cats living in the colony now." },
+    blurb: "Community cats active in the colony now." },
   { key: "adopted",  gid: "679410925",  nav: "Adopted by Me", title: "Adopted by Me",
-    blurb: "Cats I took into my own home — including some who needed surgery or socializing from feral." },
+    blurb: "Colony cats I ended up adopting." },
   { key: "visitors", gid: "1859449606", nav: "Feral Visitors", title: "Feral Visitors",
-    blurb: "Fully feral and seen only every few weeks or months — too rarely to trap, so they can't be spayed or neutered." },
+    blurb: "Fully feral and seen only every few months — too rarely to trap." },
   { key: "memoriam", gid: "2113017747", nav: "In Memoriam",   title: "In Memoriam",
-    blurb: "Cats no longer with us, and how they were lost." },
+    blurb: "Named colony cats that are no longer with us." },
 ];
 
 const gvizUrl = gid => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`;
