@@ -182,7 +182,7 @@ const VIEWS = [
 // the nav bar renders.
 const ADOPT_VIEW = { key: "adopt", nav: "💜 Up for Adoption", title: "Up for Adoption",
   blurb: "Colony cats currently looking for homes." };
-const NAV = [...VIEWS, ADOPT_VIEW];
+const NAV = [ADOPT_VIEW, ...VIEWS];
 
 const gvizUrl = gid => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`;
 
