@@ -56,8 +56,8 @@ then commit `photos.json`.
 - **Neuter status** is a fixed vocabulary in the sheet: `yes` / `no` /
   `trapped and waiting`. Pills are screen-aware: a ✓ shows wherever a cat is
   fixed; the colony screen shows "not yet fixed" / "trapped & waiting"; feral
-  visitors show "Feral — can't trap"; adopted and gone cats show no negative
-  pill (a fix-to-do is meaningless for them).
+  visitors show "Not fixed — rarely seen"; adopted and gone cats show no
+  negative pill (a fix-to-do is meaningless for them).
 - **A trailing `(...)` in a column header is a value qualifier, not part of the
   label** — e.g. `Last Flea Treatment (Sentry topical)` renders as label "Last
   Flea Treatment" with "(Sentry topical)" folded into the value.

@@ -43,12 +43,32 @@
     padding: 30px 0 4px; display: flex; flex-wrap: wrap;
     align-items: flex-start; justify-content: space-between; gap: 10px 16px;
   }
+  /* The masthead doubles as the home link, so it drops the link styling and
+     only hints at being clickable on hover. */
+  .home { display: flex; align-items: center; gap: 14px; text-decoration: none; color: inherit; }
+  .home:hover h1 { color: var(--accent); }
+  .home:hover .mark { border-color: var(--accent); }
+  /* The paw is a sibling of the text column, not part of the h1 — inline it and
+     its glyph box shoves the title right of the subtitle beneath it. */
+  .mark {
+    flex-shrink: 0; width: 48px; height: 48px; border-radius: 50%;
+    background: var(--accent-soft); border: 1px solid var(--line);
+    display: grid; place-items: center; font-size: 1.4rem; line-height: 1;
+  }
   h1 { font-size: 1.8rem; margin: 0; letter-spacing: -.02em; }
+  /* Narrow screens wrap the title over several lines, and centring the paw
+     against that whole block strands it beside the middle line. Pin it to the
+     top so it reads with the first line, and shrink the title so it wraps less. */
+  @media (max-width: 640px) {
+    .home { align-items: flex-start; gap: 12px; }
+    .mark { width: 40px; height: 40px; font-size: 1.2rem; }
+    h1 { font-size: 1.35rem; line-height: 1.3; }
+  }
   .sub { color: var(--muted); margin: 4px 0 0; }
   /* External link (opens a Google Form), so it borrows the nav-pill look but
      sits apart from the in-site screen pills and carries an outbound marker. */
   .contact {
-    flex-shrink: 0; text-decoration: none; color: var(--text); white-space: nowrap;
+    flex-shrink: 0; margin-left: auto; text-decoration: none; color: var(--text); white-space: nowrap;
     padding: 8px 15px; border-radius: 999px; border: 1px solid var(--line);
     background: var(--card); font-size: .92rem; box-shadow: var(--shadow);
     transition: border-color .15s ease, color .15s ease;
@@ -153,10 +173,13 @@
 
 <div class="wrap">
   <header>
-    <div class="head-text">
-      <h1>🐾 Our Friendly Community Cat Colony</h1>
-      <p class="sub" id="sub">Loading…</p>
-    </div>
+    <a class="home" href="#colony">
+      <span class="mark" aria-hidden="true">🐾</span>
+      <div>
+        <h1>Our Friendly Community Cat Colony</h1>
+        <p class="sub" id="sub">Loading…</p>
+      </div>
+    </a>
     <a class="contact" href="https://forms.gle/651qTXwfRUi73AGYA" target="_blank" rel="noopener">Contact us <span class="ext" aria-hidden="true">↗</span></a>
   </header>
 </div>
@@ -262,6 +285,16 @@ async function load() {
     // rather than on every render. Typing re-routes with the new global query.
     const search = document.getElementById("search");
     search.addEventListener("input", () => { SEARCH = search.value.trim().toLowerCase(); route(); });
+    // Clicking the masthead goes home. Navigating by href alone is silent when
+    // the hash is already #colony, so handle that case by re-routing directly —
+    // otherwise a search typed on the colony screen would survive the click.
+    document.querySelector(".home").addEventListener("click", e => {
+      e.preventDefault();
+      SEARCH = "";
+      search.value = "";
+      if (location.hash === "#colony" || !location.hash) route();
+      else location.hash = "colony";
+    });
     window.addEventListener("hashchange", route);
     route();
   } catch (e) {
@@ -324,7 +357,8 @@ function statsStrip() {
 
 // `view` is the current screen. Neuter pills read differently per screen: a ✓
 // shows everywhere; "not yet fixed" is a colony/adoption to-do; feral visitors
-// can't be trapped at all; adopted/gone cats show no negative.
+// come by too rarely to trap, so theirs isn't a to-do; adopted/gone cats show
+// no negative.
 function card(c, view) {
   const name = c.Name;
   const photo = PHOTOS[name];
@@ -342,7 +376,7 @@ function card(c, view) {
   if (np && np.cls === "ok") {
     pillObjs.push(np);                                        // ✓ fixed — shown on every screen
   } else if (view.key === "visitors") {
-    pillObjs.push({ cls: "warn", icon: "•", label: "Feral — can't trap" });
+    pillObjs.push({ cls: "warn", icon: "•", label: "Not fixed — rarely seen" });
   } else if ((view.key === "colony" || view.key === "adopt") && np) {
     pillObjs.push(np);                                        // not yet fixed / trapped & waiting
   }
@@ -379,6 +413,12 @@ function route() {
   if (!location.hash) location.hash = "#colony";
   document.querySelectorAll("#nav a").forEach(a =>
     a.setAttribute("aria-current", a.dataset.key === v.key ? "page" : "false"));
+  // The nav scrolls horizontally under ~768px, so landing on a later screen —
+  // from a link, a bookmark, a reload — would otherwise leave its pill off to
+  // the right with nothing in view looking selected. "nearest" is a no-op once
+  // the pill already fits.
+  document.querySelector('#nav a[aria-current="page"]')
+    ?.scrollIntoView({ inline: "nearest", block: "nearest" });
 
   const searching = !!SEARCH;
   const match = c => !SEARCH ||
