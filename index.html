@@ -381,12 +381,12 @@ function route() {
   const showAdoptChip = v.key === "colony";  // only the colony has adoptable cats
   const main = document.getElementById("main");
   main.innerHTML = `
-    ${!searching && v.key === "colony" ? statsStrip() : ""}
-    <p class="view-blurb">${searching ? "Showing matches across every section." : v.blurb}</p>
     <div class="toolbar">
       <input type="search" id="search" placeholder="Search all cats by name, status, litter…" autocomplete="off" value="${esc(SEARCH)}">
       ${showAdoptChip ? `<button class="chip" id="adoptOnly" aria-pressed="${ADOPT_ONLY}">💜 Up for adoption</button>` : ""}
     </div>
+    ${!searching && v.key === "colony" ? statsStrip() : ""}
+    <p class="view-blurb">${searching ? "Showing matches across every section." : v.blurb}</p>
     ${hasResults ? body : `<div class="state">No cats match.</div>`}`;
 
   const search = document.getElementById("search");
