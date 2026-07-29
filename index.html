@@ -152,6 +152,16 @@
   .body { padding: 13px 15px 16px; }
   .name { font-size: 1.08rem; font-weight: 700; margin: 0 0 5px; display: flex; align-items: baseline; gap: 7px; }
   .name .sex { font-size: .9rem; color: var(--muted); font-weight: 500; }
+  /* The name links to the cat's own screen. Underline on hover only — a grid of
+     underlined names reads as a list of links rather than a set of headings. */
+  .name a { color: inherit; text-decoration: none; }
+  .name a:hover { color: var(--accent); text-decoration: underline; }
+
+  /* One cat on its own screen. The card is capped so its photo doesn't blow up
+     to the full column width on a desktop. */
+  .solo { max-width: 460px; margin: 14px auto 60px; }
+  .back { color: var(--muted); text-decoration: none; }
+  .back:hover { color: var(--accent); }
   .pills { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 9px; }
   .pill {
     font-size: .74rem; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line);
@@ -221,6 +231,15 @@ const VIEWS = [
 const ADOPT_VIEW = { key: "adopt", nav: "💜 Up for Adoption", title: "Up for Adoption",
   blurb: "Colony cats currently looking for homes." };
 const NAV = [ADOPT_VIEW, ...VIEWS];
+
+const SITE_TITLE = "Our Friendly Community Cat Colony";
+
+// Every cat has its own screen at #cat/<slug>, so a link to one specific cat can
+// be texted to a neighbour. The slug is the name, lowercased, with runs of
+// anything else collapsed to a dash — "Thomas (aka Hey Hey)" → "thomas-aka-hey-hey".
+const slug = s => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+const catUrl = name => `#cat/${slug(name)}`;
+const catSlug = () => (location.hash.match(/^#cat\/(.+)$/) || [])[1] || null;
 
 const gvizUrl = gid => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`;
 
@@ -359,7 +378,7 @@ function statsStrip() {
 // shows everywhere; "not yet fixed" is a colony/adoption to-do; feral visitors
 // come by too rarely to trap, so theirs isn't a to-do; adopted/gone cats show
 // no negative.
-function card(c, view) {
+function card(c, view, solo) {
   const name = c.Name;
   const photo = PHOTOS[name];
   const adopt = isYes(c["Up for adoption?"]);
@@ -371,6 +390,9 @@ function card(c, view) {
     ? `<a href="${esc(photo.share)}" target="_blank" rel="noopener" title="View ${esc(name)}'s photos">${inner}</a>`
     : inner;
   const tags = adopt ? `<div class="corner"><span class="tag">Adoptable</span></div>` : "";
+  // The name is the way into a cat's own screen — except on that screen, where
+  // it would link to itself.
+  const nameHtml = solo ? esc(name) : `<a href="${catUrl(name)}">${esc(name)}</a>`;
   const np = neuterPill(c["Neutered?"]);
   const pillObjs = [];
   if (np && np.cls === "ok") {
@@ -396,7 +418,7 @@ function card(c, view) {
   return `<article class="card">
     <div class="photo">${img}${tags}</div>
     <div class="body">
-      <p class="name">${esc(name)}${c.Sex ? `<span class="sex">${esc(c.Sex)}</span>` : ""}</p>
+      <p class="name">${nameHtml}${c.Sex ? `<span class="sex">${esc(c.Sex)}</span>` : ""}</p>
       ${pills ? `<div class="pills">${pills}</div>` : ""}
       ${c.Status ? `<div class="status"><span class="slabel">Status</span><span class="sval">${esc(c.Status)}</span></div>` : ""}
       ${c.Statement ? `<p class="statement">${esc(c.Statement)}</p>` : ""}
@@ -408,18 +430,49 @@ function card(c, view) {
 // Search state is global — the box lives above the nav and searches every screen.
 let SEARCH = "";
 
-function route() {
-  const v = currentView();
-  if (!location.hash) location.hash = "#colony";
+// Highlight one screen's nav pill and scroll it into view. The nav scrolls
+// horizontally under ~768px, so landing on a later screen — from a link, a
+// bookmark, a reload — would otherwise leave its pill off to the right with
+// nothing in view looking selected. "nearest" is a no-op once the pill fits.
+function markNav(key) {
   document.querySelectorAll("#nav a").forEach(a =>
-    a.setAttribute("aria-current", a.dataset.key === v.key ? "page" : "false"));
-  // The nav scrolls horizontally under ~768px, so landing on a later screen —
-  // from a link, a bookmark, a reload — would otherwise leave its pill off to
-  // the right with nothing in view looking selected. "nearest" is a no-op once
-  // the pill already fits.
+    a.setAttribute("aria-current", a.dataset.key === key ? "page" : "false"));
   document.querySelector('#nav a[aria-current="page"]')
     ?.scrollIntoView({ inline: "nearest", block: "nearest" });
+}
 
+// One cat, on its own screen: the same card as the grid, plus a way back to the
+// screen it lives on. Its data is fetched live like every other screen, so a
+// cat added to the sheet has a working link straight away.
+function renderCat(wanted) {
+  const hit = VIEWS
+    .map(v => ({ v, c: BYVIEW[v.key].find(r => slug(r.Name) === wanted) }))
+    .find(x => x.c);
+  const main = document.getElementById("main");
+  markNav(hit ? hit.v.key : null);
+  if (!hit) {
+    document.title = SITE_TITLE;
+    main.innerHTML = `<div class="state">
+      There's no cat at that link.
+      <p><a class="back" href="#colony">← See every cat</a></p>
+    </div>`;
+    return;
+  }
+  document.title = `${hit.c.Name} — ${SITE_TITLE}`;
+  main.innerHTML = `
+    <p class="view-blurb"><a class="back" href="#${hit.v.key}">← ${hit.v.title}</a></p>
+    <div class="solo">${card(hit.c, hit.v, true)}</div>`;
+}
+
+function route() {
+  // A search takes over the screen, single-cat view included.
+  const cat = SEARCH ? null : catSlug();
+  if (cat) return renderCat(cat);
+
+  const v = currentView();
+  if (!location.hash) location.hash = "#colony";
+  document.title = SITE_TITLE;
+  markNav(v.key);
   const searching = !!SEARCH;
   const match = c => !SEARCH ||
     Object.values(c).some(val => String(val).toLowerCase().includes(SEARCH));

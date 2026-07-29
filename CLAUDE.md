@@ -73,6 +73,28 @@ python build_photos.py
 
 then commit `photos.json`.
 
+## Per-cat screens
+
+Every cat has its own URL — `https://katylava.github.io/cat-colony/#cat/deebo` —
+so a link about one specific cat can be texted to a neighbor. The slug is the
+name lowercased with runs of non-alphanumerics collapsed to `-`, so
+`Thomas (aka Hey Hey)` is `#cat/thomas-aka-hey-hey`. It's a route, not a file:
+a cat added to the sheet has a working link on the next page load, with nothing
+to rebuild.
+
+The screen shows the same card as the grid, capped in width and centered, with a
+back link to the screen the cat lives on. A slug matching no cat says so rather
+than showing an empty screen. Searching from a cat's screen takes over the view,
+as it does everywhere else.
+
+These links do NOT get rich previews when texted — the message shows the site's
+generic title and no photo. That's deliberate. Preview crawlers don't run
+JavaScript, so per-cat previews would mean generating a real HTML file per cat,
+which means a build step someone has to run (or a scheduled job) every time the
+sheet changes. That was judged not worth it. If it ever comes up again, the two
+real options are a scheduled GitHub Action that regenerates and commits the
+files, or a small server that renders the tags on request.
+
 ## Conventions the code encodes (don't "clean these up" without asking)
 
 - **Neuter status** is a fixed vocabulary in the sheet: `yes` / `no` /
@@ -85,8 +107,10 @@ then commit `photos.json`.
   Flea Treatment" with "(Sentry topical)" folded into the value.
 - **`Statement`** is a per-cat blurb, rendered as its own block, shown only when
   filled in.
-- **`Name` is the photo join key** — it must match between the photo tab and the
-  data tabs, or the photo silently drops.
+- **`Name` is the photo join key and the per-cat URL** — it must match between
+  the photo tab and the data tabs, or the photo silently drops, and it's what
+  `#cat/<slug>` is derived from. Renaming a cat changes its link, so a link
+  already texted to someone stops resolving.
 - The colony screen carries a stats strip: colony spay/neuter (with trapped &
   waiting), all-time spay/neuter, up for adoption, adopted, and remembered.
 
