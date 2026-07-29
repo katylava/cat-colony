@@ -9,6 +9,28 @@ Sheet. Hosted on GitHub Pages at https://katylava.github.io/cat-colony/. No
 backend, no framework, no build step — the whole app is one `index.html` of
 plain HTML/CSS/JS.
 
+## How to work on this repo
+
+Claude owns the code. I care about the user experience, not how the site is
+built — pick whatever structure, files, and build steps serve the UX and change
+them freely. Don't ask me to choose between implementation approaches, and don't
+use the chunked review workflow here. Do check with me on anything that changes
+what a visitor sees or how the site behaves.
+
+When you bring me one of those decisions, explain the trade-offs first. I'm
+deciding about the site, not about the code, so tell me:
+
+- What each option looks like to a visitor, or to me when I'm using the site or
+  updating the sheet.
+- What each one costs me — ongoing chores, waiting, things that can break, things
+  I'd have to remember.
+- Which one you'd pick and why.
+
+Don't present it as a menu I have to decode. A decision that's really about
+implementation isn't one of these — make that call yourself. And if an option
+saddles me with a recurring manual step, say so plainly and up front rather than
+mentioning it after I've agreed to it.
+
 ## Purpose (do not state it on the page)
 
 The site is a credibility artifact for rescue organizations (showing the colony
