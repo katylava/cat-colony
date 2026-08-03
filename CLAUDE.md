@@ -55,6 +55,7 @@ screen, plus a photo-lookup tab:
 - `gid=1859449606` — feral visitors (seen too rarely to trap)
 - `gid=2113017747` — in memoriam
 - `gid=869689683` — photo lookup (Name, Image URL, Share URL)
+- `gid=1710528874` — news (Date, Update), not a screen — see below
 
 `index.html` fetches the four data tabs live via the gviz JSON endpoint on every
 load, so sheet edits appear on refresh with no rebuild. A cat is never listed on
@@ -72,6 +73,28 @@ python build_photos.py
 ```
 
 then commit `photos.json`.
+
+## News
+
+The News tab is a running log of colony updates: a `Date` and an `Update`. It
+isn't a screen — it renders as a panel beside every screen (cat grids, search
+results, a single cat's page), newest first, and it's live like the cat tabs, so
+adding a row to the sheet is the whole publishing step.
+
+The page is one grid with three regions: a full-width band (`#topbar` — stats,
+blurb, back link), the cats (`#main`), and the news. The band spans both columns
+and the other two share row two, which is what makes the news panel's top line
+up with the first cat card. That alignment is why the band exists at all, so
+anything added above the cats belongs in it rather than at the top of `#main`.
+
+On a phone there's no room for a column, so the panel moves above the screen
+content and shows only the newest entry, with the rest behind a "N more updates"
+tap. That keeps what's new first without pushing the cats down the page.
+
+Sorting reads the raw date cell, not the formatted one. `parseNews` is separate
+from `parseGviz` for exactly this reason: `parseGviz` deliberately throws away
+`c.v` (see Gotchas), but news needs a real `Date` to sort on. It parses
+`Date(2026,7,3)` and falls back to parsing the display text.
 
 ## Per-cat screens
 
@@ -112,7 +135,12 @@ files, or a small server that renders the tags on request.
   `#cat/<slug>` is derived from. Renaming a cat changes its link, so a link
   already texted to someone stops resolving.
 - The colony screen carries a stats strip: colony spay/neuter (with trapped &
-  waiting), all-time spay/neuter, up for adoption, adopted, and remembered.
+  waiting), all-time spay/neuter, up for adoption, adopted, and remembered. The
+  tiles stretch with the window, but the column count is pinned to 6, 3 or 2 —
+  the divisors of six — so a wrap never strands a tile alone on its own row.
+  Adding or removing a tile means revisiting those numbers. The strip lives in
+  the full-width band above the two columns, not in the cat column, so it spans
+  the page rather than stopping at the news sidebar.
 
 ## Gotchas
 

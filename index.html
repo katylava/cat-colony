@@ -96,18 +96,24 @@
   .nav-inner a[aria-current="page"] .n { opacity: .85; }
 
   /* Stat tiles: figures in ink, one accent, one single-hue meter. No category color-coding. */
+  /* Tiles stretch with the window (1fr), and the column count is set explicitly
+     rather than by auto-fit: there are six tiles, so only 6, 3 and 2 divide them
+     into full rows — auto-fit would happily leave a lone tile stranded on a row
+     of its own. */
   .stats {
-    display: grid; gap: 12px; margin: 22px 0 8px;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    display: grid; gap: 12px; margin: 0 0 8px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  @container band (min-width: 480px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @container band (min-width: 640px) { .stats { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
   .stat {
-    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
-    padding: 15px 16px; box-shadow: var(--shadow);
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 12px 13px; box-shadow: var(--shadow);
   }
-  .stat .num { font-size: 1.9rem; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-  .stat .num .of { font-size: 1rem; font-weight: 600; color: var(--muted); }
-  .stat .lbl { color: var(--muted); font-size: .82rem; margin-top: 2px; }
-  .stat .note { color: var(--muted); font-size: .72rem; margin-top: 6px; }
+  .stat .num { font-size: 1.5rem; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .stat .num .of { font-size: .85rem; font-weight: 600; color: var(--muted); }
+  .stat .lbl { color: var(--muted); font-size: .73rem; line-height: 1.3; margin-top: 3px; }
+  .stat .note { color: var(--muted); font-size: .68rem; margin-top: 6px; }
   /* Two-segment progress: solid = fixed, faded = trapped & waiting, track = not yet. */
   .meter { display: flex; gap: 2px; height: 6px; border-radius: 999px; background: var(--line); margin-top: 10px; overflow: hidden; }
   .meter > span { display: block; height: 100%; }
@@ -181,6 +187,51 @@
   .state { text-align: center; color: var(--muted); padding: 60px 20px; }
   .state.err { color: #c0392b; }
   footer { color: var(--muted); font-size: .82rem; padding: 0 0 50px; }
+
+  /* News rides alongside every screen — cat grids, search results, one cat's own
+     page — so it sits outside <main> in a two-column shell. */
+  /* Three regions in one grid: a full-width band (stats, blurb), the cats, and
+     the news. Sharing a grid is what lets the news line up with the first cat
+     card — both start at row two — and lets the band span the news column so
+     the stats strip gets the whole page width. Vertical spacing is the grid's
+     row gap, not the blocks' own margins, or the two columns would start on
+     different lines. */
+  .layout {
+    display: grid; column-gap: 30px; row-gap: 16px; align-items: start; padding-top: 22px;
+    grid-template-columns: minmax(0, 1fr) 290px;
+  }
+  .topbar { grid-column: 1 / -1; container-type: inline-size; container-name: band; }
+  .topbar > :first-child, #main > :first-child { margin-top: 0; }
+  .topbar > :last-child { margin-bottom: 0; }
+  .news {
+    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+    padding: 16px 18px 18px; box-shadow: var(--shadow);
+    position: sticky; top: 72px; max-height: calc(100vh - 96px); overflow-y: auto;
+  }
+  .news-head {
+    font-size: .72rem; text-transform: uppercase; letter-spacing: .06em;
+    color: var(--muted); margin: 0 0 12px;
+  }
+  .news-list { list-style: none; margin: 0; padding: 0; }
+  .news-item + .news-item { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .news-item time { display: block; font-size: .7rem; font-weight: 600; color: var(--accent); letter-spacing: .03em; }
+  .news-item p { margin: 3px 0 0; font-size: .86rem; line-height: 1.45; }
+  /* The expander is phone-only: on a wide screen every entry is already shown. */
+  .news-more {
+    display: none; margin-top: 14px; padding: 0; border: 0; background: none;
+    color: var(--muted); font: inherit; font-size: .82rem; cursor: pointer;
+  }
+  .news-more:hover { color: var(--accent); }
+
+  /* No room for a column on a phone: the sidebar becomes a block above the
+     screen, showing the newest entry with the rest a tap away, so what's new is
+     the first thing seen and the cats stay near the top. */
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; gap: 0; }
+    .news { order: -1; position: static; max-height: none; margin: 0 0 4px; }
+    .news-more { display: block; }
+    .news:not(.open) .news-item + .news-item { display: none; }
+  }
 </style>
 
 <div class="wrap">
@@ -208,9 +259,13 @@
 
 <nav><div class="wrap"><div class="nav-inner" id="nav"></div></div></nav>
 
-<main class="wrap" id="main">
-  <div class="state" id="state">Loading…</div>
-</main>
+<div class="wrap layout">
+  <div class="topbar" id="topbar"></div>
+  <main id="main">
+    <div class="state" id="state">Loading…</div>
+  </main>
+  <aside class="news" id="news"></aside>
+</div>
 
 <div class="wrap"><footer>Site generated by Claude Code</footer></div>
 
@@ -246,6 +301,11 @@ const slug = s => (s || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^
 const catUrl = name => `#cat/${slug(name)}`;
 const catSlug = () => (location.hash.match(/^#cat\/(.+)$/) || [])[1] || null;
 
+// Colony news: a Date column and an Update column, shown newest first beside
+// every screen. It's a tab like any other, so writing a row in the sheet is the
+// whole publishing step.
+const NEWS_GID = "1710528874";
+
 const gvizUrl = gid => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`;
 
 function parseGviz(text) {
@@ -266,6 +326,30 @@ function parseGviz(text) {
     });
     return o;
   });
+}
+
+// News needs a real date to sort on, so unlike parseGviz it reads the raw cell
+// (`Date(2026,7,3)`, month 0-indexed) rather than the formatted one, falling
+// back to parsing the display text if the column ever isn't a date cell.
+function parseNews(text) {
+  const json = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
+  const cols = json.table.cols;
+  const at = label => {
+    const i = cols.findIndex(c => (c.label || "").trim().toLowerCase() === label);
+    return i;
+  };
+  const di = at("date") >= 0 ? at("date") : 0;
+  const ti = at("update") >= 0 ? at("update") : 1;
+  return (json.table.rows || []).map(r => {
+    const d = r.c[di], t = r.c[ti];
+    const body = t && t.v != null ? String(t.v).trim() : "";
+    let when = null;
+    const raw = d && typeof d.v === "string" ? d.v.match(/^Date\((\d+),(\d+),(\d+)/) : null;
+    if (raw) when = new Date(+raw[1], +raw[2], +raw[3]);
+    else if (d && d.f) { const p = new Date(d.f); if (!isNaN(p)) when = p; }
+    return { when, body };
+  }).filter(n => n.body)
+    .sort((a, b) => (b.when ? b.when.getTime() : 0) - (a.when ? a.when.getTime() : 0));
 }
 
 const esc = s => (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -292,11 +376,13 @@ let PHOTOS = {};
 async function load() {
   const state = document.getElementById("state");
   try {
-    const [photos, ...data] = await Promise.all([
+    const [photos, news, ...data] = await Promise.all([
       fetch("photos.json").then(r => r.ok ? r.json() : {}).catch(() => ({})),
+      fetch(gvizUrl(NEWS_GID)).then(r => r.text()).then(parseNews),
       ...VIEWS.map(v => fetch(gvizUrl(v.gid)).then(r => r.text()).then(parseGviz)),
     ]);
     PHOTOS = photos;
+    renderNews(news);
     VIEWS.forEach((v, i) => { BYVIEW[v.key] = data[i].filter(r => r.Name); });
     // The adoption screen has no tab of its own — it's derived: every cat flagged
     // up for adoption. Those cats only ever live on one real tab, so there's
@@ -325,6 +411,31 @@ async function load() {
     state.className = "state err";
     state.textContent = "Couldn't load the sheet. Make sure it's still shared publicly. (" + e.message + ")";
   }
+}
+
+// The news panel is rendered once and left alone — it's the same on every
+// screen, so routing doesn't touch it.
+function renderNews(items) {
+  const el = document.getElementById("news");
+  const fmt = d => d
+    ? d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+    : "";
+  const rest = items.length - 1;
+  el.innerHTML = `
+    <h2 class="news-head">News</h2>
+    <ol class="news-list">${items.map(n => `
+      <li class="news-item">
+        ${n.when ? `<time datetime="${n.when.toISOString().slice(0, 10)}">${fmt(n.when)}</time>` : ""}
+        <p>${esc(n.body)}</p>
+      </li>`).join("")}
+    </ol>
+    ${rest > 0 ? `<button class="news-more" type="button" aria-expanded="false">▾ ${rest} more update${rest > 1 ? "s" : ""}</button>` : ""}`;
+  const btn = el.querySelector(".news-more");
+  if (btn) btn.addEventListener("click", () => {
+    const open = el.classList.toggle("open");
+    btn.setAttribute("aria-expanded", String(open));
+    btn.textContent = open ? "▴ Show less" : `▾ ${rest} more update${rest > 1 ? "s" : ""}`;
+  });
 }
 
 function currentView() {
@@ -454,9 +565,11 @@ function renderCat(wanted) {
     .map(v => ({ v, c: BYVIEW[v.key].find(r => slug(r.Name) === wanted) }))
     .find(x => x.c);
   const main = document.getElementById("main");
+  const top = document.getElementById("topbar");
   markNav(hit ? hit.v.key : null);
   if (!hit) {
     document.title = SITE_TITLE;
+    top.innerHTML = "";
     main.innerHTML = `<div class="state">
       There's no cat at that link.
       <p><a class="back" href="#colony">← See every cat</a></p>
@@ -464,9 +577,8 @@ function renderCat(wanted) {
     return;
   }
   document.title = `${hit.c.Name} — ${SITE_TITLE}`;
-  main.innerHTML = `
-    <p class="view-blurb"><a class="back" href="#${hit.v.key}">← ${hit.v.title}</a></p>
-    <div class="solo">${card(hit.c, hit.v, true)}</div>`;
+  top.innerHTML = `<p class="view-blurb"><a class="back" href="#${hit.v.key}">← ${hit.v.title}</a></p>`;
+  main.innerHTML = `<div class="solo">${card(hit.c, hit.v, true)}</div>`;
 }
 
 function route() {
@@ -502,11 +614,13 @@ function route() {
     body = `<div class="grid">${rows.map(c => card(c, v)).join("")}</div>`;
   }
 
-  const main = document.getElementById("main");
-  main.innerHTML = `
+  // The stats and the blurb go in the full-width band above both columns; only
+  // the cats themselves sit in the column beside the news.
+  document.getElementById("topbar").innerHTML = `
     ${!searching && v.key === "colony" ? statsStrip() : ""}
-    <p class="view-blurb">${searching ? "Showing matches across every section." : v.blurb}</p>
-    ${hasResults ? body : `<div class="state">No cats match.</div>`}`;
+    <p class="view-blurb">${searching ? "Showing matches across every section." : v.blurb}</p>`;
+  document.getElementById("main").innerHTML =
+    hasResults ? body : `<div class="state">No cats match.</div>`;
 }
 
 // Reset transient filters when switching screens so each screen starts clean.
