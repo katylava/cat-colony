@@ -127,7 +127,15 @@
     flex: 1 1 220px; min-width: 160px; padding: 9px 12px; border-radius: 10px;
     border: 1px solid var(--line); background: var(--card); color: var(--text); font-size: .95rem;
   }
+  /* The screen's intro is a labelled block, not a loose sentence: an eyebrow in
+     the news panel's style with the blurb under it. On a phone the pair lands
+     between two cards, where a bare sentence reads as a layout slip. */
+  .view-label {
+    font-size: .72rem; text-transform: uppercase; letter-spacing: .06em;
+    font-weight: 600; color: var(--muted); margin: 16px 0 0;
+  }
   .view-blurb { color: var(--muted); margin: 16px 0 2px; max-width: 60ch; }
+  .view-label + .view-blurb { margin-top: 4px; }
 
   /* Search spans every screen; each match is grouped under its section so the
      screen a cat belongs to is always clear. */
@@ -230,9 +238,17 @@
      the first thing seen and the cats stay near the top. */
   @media (max-width: 900px) {
     .layout { grid-template-columns: 1fr; gap: 0; }
-    .news { order: -1; position: static; max-height: none; margin: 0 0 4px; }
+    /* Card to card, so the break has to beat the 12px between stat tiles or the
+       news reads as part of the strip below it. */
+    .news { order: -1; position: static; max-height: none; margin: 0 0 18px; }
     .news-more { display: block; }
     .news:not(.open) .news-item + .news-item { display: none; }
+    /* Stacked, the band's intro lands between two cards with the grid's row gap
+       zeroed, so it carries its own spacing. Weighted downward: it captions the
+       cats below it. */
+    .topbar > .view-label { margin-top: 14px; }
+    .topbar > .view-blurb { margin: 14px 0 10px; }
+    .topbar > .view-label + .view-blurb { margin-top: 4px; }
   }
 </style>
 
@@ -630,6 +646,7 @@ function route() {
   // the cats themselves sit in the column beside the news.
   document.getElementById("topbar").innerHTML = `
     ${!searching && v.key === "colony" ? statsStrip() : ""}
+    <p class="view-label">${searching ? "Search results" : v.title}</p>
     <p class="view-blurb">${searching ? "Showing matches across every section." : v.blurb}</p>`;
   document.getElementById("main").innerHTML =
     hasResults ? body : `<div class="state">No cats match.</div>`;
