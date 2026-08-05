@@ -76,10 +76,35 @@ then commit `photos.json`.
 
 ## News
 
-The News tab is a running log of colony updates: a `Date` and an `Update`. It
-isn't a screen — it renders as a panel beside every screen (cat grids, search
-results, a single cat's page), newest first, and it's live like the cat tabs, so
-adding a row to the sheet is the whole publishing step.
+The News tab is a running log of colony updates: a `Date` and an `Update`. A
+panel beside every screen (cat grids, search results, a single cat's page)
+carries the newest three, newest first, live like the cat tabs — adding a row to
+the sheet is the whole publishing step.
+
+The full log is its own screen at `#news`, linked from the bottom of the panel
+("All N updates →") and from nowhere else: it has no nav pill, because the panel
+that links to it is on every screen already. On that screen the log replaces the
+panel — the layout drops to one column (`.layout.wide`) and `#newspanel` is
+hidden, so the log isn't sitting beside a copy of itself. The panel's element id
+is `newspanel`, not `news`, or the browser would jump to it en route to `#news`.
+
+The panel caps at three because it's a glance at what changed, not the archive.
+Twenty rows in the sheet don't lengthen it.
+
+The log's back link goes to the screen the reader left, tracked in `BACK` — the
+panel is on every screen, so there's no single screen to return to, and a cat's
+own page is one of the places they can arrive from. A cold link has no such
+screen and falls back to the colony. Following the link mid-search clears the
+search first: search takes over every screen including the log, so the link
+would otherwise leave the results up and look dead.
+
+News is not a card. Cards are for the things the site is about — a cat, a count
+— and a card around the news made it an object of the same kind. The eyebrow and
+the rules between entries carry the structure instead. Beside a screen, the
+panel's column is tinted (`--news-bg`) for its full height and bled out to the
+window's edge with a pseudo-element; the column would otherwise sit visibly
+empty below the first row of cats. That empty column is also what the panel
+being `position: sticky` used to paper over — the tint replaced it.
 
 The page is one grid with three regions: a full-width band (`#topbar` — stats,
 blurb, back link), the cats (`#main`), and the news. The band spans both columns
@@ -88,8 +113,9 @@ up with the first cat card. That alignment is why the band exists at all, so
 anything added above the cats belongs in it rather than at the top of `#main`.
 
 On a phone there's no room for a column, so the panel moves above the screen
-content and shows only the newest entry, with the rest behind a "N more updates"
-tap. That keeps what's new first without pushing the cats down the page.
+content and cuts to the newest entry alone, with the same link to the full log
+under it. That keeps what's new first without pushing the cats down the page.
+The tint comes with it, bleeding both edges as a band across the top.
 
 Sorting reads the raw date cell, not the formatted one. `parseNews` is separate
 from `parseGviz` for exactly this reason: `parseGviz` deliberately throws away

@@ -14,6 +14,7 @@
     --ok-soft: #dff0e6;
     --warn: #b8791b;
     --warn-soft: #f7ecd6;
+    --news-bg: #f2ece1;
     --shadow: 0 1px 2px rgba(0,0,0,.05), 0 6px 18px rgba(0,0,0,.05);
   }
   @media (prefers-color-scheme: dark) {
@@ -29,6 +30,7 @@
       --ok-soft: #1c3327;
       --warn: #e0af5c;
       --warn-soft: #2f2513;
+      --news-bg: #1f1b15;
       --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.35);
     }
   }
@@ -208,16 +210,42 @@
      different lines. */
   .layout {
     display: grid; column-gap: 30px; row-gap: 16px; align-items: start; padding-top: 22px;
-    grid-template-columns: minmax(0, 1fr) 290px;
+    grid-template-columns: minmax(0, 1fr) 334px;
   }
   .topbar { grid-column: 1 / -1; container-type: inline-size; container-name: band; }
   .topbar > :first-child, #main > :first-child { margin-top: 0; }
   .topbar > :last-child { margin-bottom: 0; }
-  .news {
-    background: var(--card); border: 1px solid var(--line); border-radius: 16px;
-    padding: 16px 18px 18px; box-shadow: var(--shadow);
-    position: sticky; top: 72px; max-height: calc(100vh - 96px); overflow-y: auto;
+  /* News is text, not an object: no card. Cards are for the things the site is
+     about — a cat, a count. The eyebrow and the rules between entries carry the
+     structure. Two jobs, same markup: the panel beside every screen, and the
+     full log on its own screen. */
+  .news.log { max-width: 640px; margin-bottom: 60px; }
+  /* Beside a screen the news is a tinted rail: the column is tinted for its full
+     height and bled out to the window's edge, because a short block over the
+     page background leaves the column visibly empty for the length of the cat
+     grid. The 22px either side keeps the entries a column rather than a block
+     shoved against the glass. The panel stretches to the row, and the row is as
+     tall as the cats plus the 60px every screen leaves under its content —
+     taking that 60px back as a margin lands the rail's bottom edge on the last
+     card's. */
+  .news.panel {
+    position: relative; align-self: stretch;
+    padding: 22px 22px 32px; margin-bottom: 60px;
   }
+  /* The bleed is a pseudo-element because the column stops at the wrap's
+     padding, and a tint that stopped there would leave a stripe of background
+     pinned to the window edge. Rounded on the left, square on the right where it
+     runs off the window — a panel slid in from that edge. */
+  .news.panel::before {
+    content: ""; position: absolute; top: 0; bottom: 0; left: 0;
+    width: calc(100% + 20px + (100vw - min(100vw, 1200px)) / 2);
+    background: var(--news-bg); border-radius: 16px 0 0 16px;
+  }
+  /* The tint is absolutely positioned, so it paints over in-flow siblings.
+     Positioning the content puts it back on top. */
+  .news.panel > * { position: relative; }
+  /* The log has the whole row: no column beside it to line up with. */
+  .layout.wide { grid-template-columns: minmax(0, 1fr); }
   .news-head {
     font-size: .72rem; text-transform: uppercase; letter-spacing: .06em;
     color: var(--muted); margin: 0 0 12px;
@@ -226,23 +254,25 @@
   .news-item + .news-item { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
   .news-item time { display: block; font-size: .7rem; font-weight: 600; color: var(--accent); letter-spacing: .03em; }
   .news-item p { margin: 3px 0 0; font-size: .86rem; line-height: 1.45; }
-  /* The expander is phone-only: on a wide screen every entry is already shown. */
   .news-more {
-    display: none; margin-top: 14px; padding: 0; border: 0; background: none;
-    color: var(--muted); font: inherit; font-size: .82rem; cursor: pointer;
+    display: inline-block; margin-top: 14px; color: var(--muted);
+    font-size: .82rem; text-decoration: none;
   }
   .news-more:hover { color: var(--accent); }
 
-  /* No room for a column on a phone: the sidebar becomes a block above the
-     screen, showing the newest entry with the rest a tap away, so what's new is
-     the first thing seen and the cats stay near the top. */
+  /* No room for a column on a phone: the panel becomes a block above the screen,
+     cut to the newest entry alone, so what's new is the first thing seen and the
+     cats stay near the top. The link under it goes to the full log either way. */
   @media (max-width: 900px) {
-    .layout { grid-template-columns: 1fr; gap: 0; }
-    /* Card to card, so the break has to beat the 12px between stat tiles or the
-       news reads as part of the strip below it. */
-    .news { order: -1; position: static; max-height: none; margin: 0 0 18px; }
-    .news-more { display: block; }
-    .news:not(.open) .news-item + .news-item { display: none; }
+    .layout, .layout.wide { grid-template-columns: 1fr; gap: 0; }
+    /* Stacked, the tint is a band across the top instead of a column: it bleeds
+       both edges and the gap below it has to beat the 12px between stat tiles,
+       or the news reads as part of the strip. */
+    .news.panel { order: -1; margin: 0 0 18px; padding: 16px 0 18px; }
+    /* The band spans the screen: the entries keep the page's own gutters instead
+       of the column's inset, and there's no corner left to round. */
+    .news.panel::before { left: -20px; width: calc(100% + 40px); border-radius: 0; }
+    .news.panel .news-item + .news-item { display: none; }
     /* Stacked, the band's intro lands between two cards with the grid's row gap
        zeroed, so it carries its own spacing. Weighted downward: it captions the
        cats below it. */
@@ -283,7 +313,9 @@
   <main id="main">
     <div class="state" id="state">Loading…</div>
   </main>
-  <aside class="news" id="news"></aside>
+  <!-- id is not "news": the full log lives at #news, and a matching id would
+       make the browser jump to this panel on the way there. -->
+  <aside class="news panel" id="newspanel"></aside>
 </div>
 
 <div class="wrap"><footer>
@@ -433,6 +465,14 @@ async function load() {
       if (location.hash === "#colony" || !location.hash) route();
       else location.hash = "colony";
     });
+    // A search takes over every screen, the news log included, so following the
+    // panel's link mid-search would leave the results up and look like a dead
+    // link. Drop the search on the way, as the masthead does.
+    document.getElementById("newspanel").addEventListener("click", e => {
+      if (!e.target.closest(".news-more")) return;
+      SEARCH = "";
+      search.value = "";
+    });
     window.addEventListener("hashchange", route);
     route();
   } catch (e) {
@@ -441,29 +481,50 @@ async function load() {
   }
 }
 
-// The news panel is rendered once and left alone — it's the same on every
-// screen, so routing doesn't touch it.
-function renderNews(items) {
-  const el = document.getElementById("news");
+// The panel keeps the newest few — beside a screen it's a glance at what's
+// changed, not the archive. The rest is a link away at #news.
+const NEWS_PANEL_MAX = 3;
+let NEWS = [];
+
+function newsList(items) {
   const fmt = d => d
     ? d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
     : "";
-  const rest = items.length - 1;
-  el.innerHTML = `
+  return `<ol class="news-list">${items.map(n => `
+    <li class="news-item">
+      ${n.when ? `<time datetime="${n.when.toISOString().slice(0, 10)}">${fmt(n.when)}</time>` : ""}
+      <p>${esc(n.body)}</p>
+    </li>`).join("")}
+  </ol>`;
+}
+
+// The panel is rendered once and left alone — it's the same on every screen, so
+// routing doesn't touch it.
+function renderNews(items) {
+  NEWS = items;
+  document.getElementById("newspanel").innerHTML = `
     <h2 class="news-head">News</h2>
-    <ol class="news-list">${items.map(n => `
-      <li class="news-item">
-        ${n.when ? `<time datetime="${n.when.toISOString().slice(0, 10)}">${fmt(n.when)}</time>` : ""}
-        <p>${esc(n.body)}</p>
-      </li>`).join("")}
-    </ol>
-    ${rest > 0 ? `<button class="news-more" type="button" aria-expanded="false">▾ ${rest} more update${rest > 1 ? "s" : ""}</button>` : ""}`;
-  const btn = el.querySelector(".news-more");
-  if (btn) btn.addEventListener("click", () => {
-    const open = el.classList.toggle("open");
-    btn.setAttribute("aria-expanded", String(open));
-    btn.textContent = open ? "▴ Show less" : `▾ ${rest} more update${rest > 1 ? "s" : ""}`;
-  });
+    ${newsList(items.slice(0, NEWS_PANEL_MAX))}
+    ${items.length > 1 ? `<a class="news-more" href="#news">All ${items.length} updates →</a>` : ""}`;
+}
+
+// The screen the news link was clicked from. Every screen carries the panel, so
+// there's no one screen to send people back to — a fixed "← The Colony" would be
+// wrong for anyone who left from In Memoriam or a cat's own page. A link opened
+// cold has no such screen; the colony is the fallback.
+let BACK = { hash: "#colony", label: "The Colony" };
+
+// The whole log on its own screen. No nav pill: it's reached from the panel,
+// which every screen carries, so a pill would only crowd the screens.
+function renderNewsPage() {
+  document.title = `News — ${SITE_TITLE}`;
+  markNav(null);
+  document.getElementById("topbar").innerHTML = `
+    <p class="view-label">News</p>
+    <p class="view-blurb"><a class="back" href="${BACK.hash}">← ${esc(BACK.label)}</a></p>`;
+  document.getElementById("main").innerHTML = NEWS.length
+    ? `<div class="news log">${newsList(NEWS)}</div>`
+    : `<div class="state">No updates yet.</div>`;
 }
 
 function currentView() {
@@ -605,19 +666,28 @@ function renderCat(wanted) {
     return;
   }
   document.title = `${hit.c.Name} — ${SITE_TITLE}`;
+  BACK = { hash: `#cat/${wanted}`, label: hit.c.Name };
   top.innerHTML = `<p class="view-blurb"><a class="back" href="#${hit.v.key}">← ${hit.v.title}</a></p>`;
   main.innerHTML = `<div class="solo">${card(hit.c, hit.v, true)}</div>`;
 }
 
 function route() {
-  // A search takes over the screen, single-cat view included.
+  // A search takes over the screen, single-cat and news views included.
   const cat = SEARCH ? null : catSlug();
+  const onNews = !SEARCH && !cat && location.hash === "#news";
+  // The log replaces the panel rather than sitting beside a copy of itself.
+  document.querySelector(".layout").classList.toggle("wide", onNews);
+  document.getElementById("newspanel").hidden = onNews;
   if (cat) return renderCat(cat);
+  if (onNews) return renderNewsPage();
 
   const v = currentView();
   if (!location.hash) location.hash = "#colony";
   document.title = SITE_TITLE;
   markNav(v.key);
+  // Searching from the news screen leaves the hash on #news; that's not a screen
+  // to come back to.
+  if (location.hash !== "#news") BACK = { hash: `#${v.key}`, label: v.title };
   const searching = !!SEARCH;
   const match = c => !SEARCH ||
     Object.values(c).some(val => String(val).toLowerCase().includes(SEARCH));
