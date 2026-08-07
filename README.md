@@ -6,6 +6,26 @@ A live web view of a cat-colony Google Sheet. Frontend-only, hosted on GitHub Pa
 
 - **Data is live.** `index.html` reads the four data tabs straight from the sheet on every page load, so edits show up on refresh with no rebuild.
 - **Photos need a refresh step.** The sheet stores photos as Google Photos share links, which browsers can't turn into embeddable images. `build_photos.py` resolves them once into `photos.json`, which the page loads.
+- **News needs the sheet published.** The news panel reads the published-to-web sheet, not the API the cat tabs use. See below.
+
+## Keeping news working
+
+The News tab must stay published, or the news panel goes blank.
+
+A link made with Sheets' **Insert → Link** lives on the cell, and the data APIs
+drop it — they return the display text with the URL gone. The published-to-web
+version of the sheet is the only public rendering that keeps it. The page reads
+news from there.
+
+To check or restore it: **File → Share → Publish to web**, publish the News
+tab, and leave *Automatically republish when changes are made* ticked.
+
+Two smaller notes:
+
+- Republishing isn't instant. A new row can take a short while to reach the
+  site, unlike the cat tabs, which are live on refresh.
+- The published URL is baked into `index.html` as `NEWS_PUB_URL`. Re-publishing
+  from scratch can issue a new one, and the panel would need it updated.
 
 ## Refreshing photos
 

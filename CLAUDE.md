@@ -78,8 +78,8 @@ then commit `photos.json`.
 
 The News tab is a running log of colony updates: a `Date` and an `Update`. A
 panel beside every screen (cat grids, search results, a single cat's page)
-carries the newest three, newest first, live like the cat tabs — adding a row to
-the sheet is the whole publishing step.
+carries the newest three, newest first — adding a row to the sheet is the whole
+publishing step.
 
 The full log is its own screen at `#news`, linked from the bottom of the panel
 ("All N updates →") and from nowhere else: it has no nav pill, because the panel
@@ -117,10 +117,43 @@ content and cuts to the newest entry alone, with the same link to the full log
 under it. That keeps what's new first without pushing the cats down the page.
 The tint comes with it, bleeding both edges as a band across the top.
 
-Sorting reads the raw date cell, not the formatted one. `parseNews` is separate
-from `parseGviz` for exactly this reason: `parseGviz` deliberately throws away
-`c.v` (see Gotchas), but news needs a real `Date` to sort on. It parses
-`Date(2026,7,3)` and falls back to parsing the display text.
+Rows sharing a date are merged into one entry, bodies separated by a rule. A
+day's news is one update; split up it repeated the date and used three of the
+panel's three slots. Undated rows never merge. `groupNews` does this at the tail
+of the parser, so an entry holds `bodies` (an array of HTML strings), not a
+single `body`. The "All N updates" link counts entries, so it counts days.
+
+### News is read from the published sheet, not gviz
+
+This is the one tab that doesn't come from the gviz endpoint. A link made with
+Sheets' Insert > Link is a property of the cell, and every data API drops it:
+gviz JSON, gviz HTML, the TSV export, `htmlview` and `preview` all return the
+display text with the URL gone. The published-to-web HTML is the only public
+rendering that keeps it, as a real `<a>`.
+
+`NEWS_PUB_URL` needs `widget=false&headers=false` — the bare `pubhtml` URL the
+Share dialog hands out is a JavaScript shell with no data in it. CORS passes:
+Google echoes the request's `Origin` back. (Checking this with curl misleads —
+curl sends no `Origin`, so no `access-control-allow-origin` comes back and it
+looks blocked.)
+
+Parsing costs a few things gviz gave for free, all handled in `parseNewsPub`:
+
+- The date is display text (`8/6/26`), not a real value, so `pubDate` reads it
+  back. Two-digit years are read as this century.
+- The first body row is the sheet's own header row, dropped by matching "date"
+  rather than by index.
+- Links are wrapped in `https://www.google.com/url?q=…`; `unwrapGoogleUrl`
+  pulls the real URL out.
+- `cellHtml` rebuilds each cell from its nodes — text escaped, anchors kept,
+  Google's spans and inline colors discarded. Nothing else is trusted through.
+
+Unpublishing the sheet empties the panel. There's no gviz fallback — gviz can't
+carry the links, which is the whole reason for reading the published HTML, and a
+silent downgrade to link-less news isn't worth the second code path.
+
+Bodies reach `newsList` as HTML that is already safe, so it must not escape them
+again. `linkify` (bare URLs → links) runs inside `cellHtml`, on text nodes.
 
 ## Per-cat screens
 
@@ -185,4 +218,9 @@ files, or a small server that renders the tags on request.
 - Preview locally with `python -m http.server` in the repo root.
 - Verify changes with a headless browser (Playwright) screenshotting the live
   URL or the local server — don't rely on driving the user's Chrome.
+- Playwright here is the **Python** package (`from playwright.sync_api import
+  sync_playwright`), installed globally via mise. It is not installed for Node,
+  so `import { chromium } from 'playwright'` fails and `npm ls -g` doesn't list
+  it — that is not evidence Playwright is missing. Write the check in Python and
+  run it with `python3`.
 - Deploy = commit and push to `main`; GitHub Pages rebuilds in a minute or two.

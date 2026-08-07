@@ -254,6 +254,9 @@
   .news-item + .news-item { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
   .news-item time { display: block; font-size: .7rem; font-weight: 600; color: var(--accent); letter-spacing: .03em; }
   .news-item p { margin: 3px 0 0; font-size: .86rem; line-height: 1.45; }
+  /* A pasted URL is longer than the panel is wide, so it has to be allowed to
+     break mid-string or it pushes the column open. */
+  .news-item a { color: var(--accent); overflow-wrap: anywhere; }
   .news-more {
     display: inline-block; margin-top: 14px; color: var(--muted);
     font-size: .82rem; text-decoration: none;
@@ -366,6 +369,20 @@ const catSlug = () => (location.hash.match(/^#cat\/(.+)$/) || [])[1] || null;
 // whole publishing step.
 const NEWS_GID = "1710528874";
 
+// News reads the sheet's published-to-web HTML, not gviz, because a link made
+// with Sheets' Insert > Link is a property of the cell that the data APIs drop:
+// gviz JSON, gviz HTML, the TSV export, htmlview and preview all hand back the
+// display text with the URL gone. The published table is the only public
+// rendering that keeps it, as a real <a>.
+//
+// `widget=false&headers=false` is what makes it a table. The bare pubhtml URL
+// the Share dialog gives you is a JavaScript shell with no data in it.
+//
+// This ties the panel to File > Share > Publish to web staying on. See README.
+const NEWS_PUB_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRVyTmBa643DI_S9TZC4DeFlvMq1KCp2JMe8D81SGGQ4qRkWOD9RN_vCLjsNTD1gdKhqatyiJvENEIS" +
+  `/pubhtml?gid=${NEWS_GID}&single=true&widget=false&headers=false`;
+
 const gvizUrl = gid => `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&gid=${gid}`;
 
 function parseGviz(text) {
@@ -388,28 +405,80 @@ function parseGviz(text) {
   });
 }
 
-// News needs a real date to sort on, so unlike parseGviz it reads the raw cell
-// (`Date(2026,7,3)`, month 0-indexed) rather than the formatted one, falling
-// back to parsing the display text if the column ever isn't a date cell.
-function parseNews(text) {
-  const json = JSON.parse(text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1));
-  const cols = json.table.cols;
-  const at = label => {
-    const i = cols.findIndex(c => (c.label || "").trim().toLowerCase() === label);
-    return i;
-  };
-  const di = at("date") >= 0 ? at("date") : 0;
-  const ti = at("update") >= 0 ? at("update") : 1;
-  return (json.table.rows || []).map(r => {
-    const d = r.c[di], t = r.c[ti];
-    const body = t && t.v != null ? String(t.v).trim() : "";
-    let when = null;
-    const raw = d && typeof d.v === "string" ? d.v.match(/^Date\((\d+),(\d+),(\d+)/) : null;
-    if (raw) when = new Date(+raw[1], +raw[2], +raw[3]);
-    else if (d && d.f) { const p = new Date(d.f); if (!isNaN(p)) when = p; }
-    return { when, body };
-  }).filter(n => n.body)
-    .sort((a, b) => (b.when ? b.when.getTime() : 0) - (a.when ? a.when.getTime() : 0));
+// Several rows on one date read as one update: they're a single day's news, and
+// split across entries they'd repeat the date and eat the panel's three slots.
+// An entry therefore carries a list of bodies, not one. Undated rows never
+// merge — there's nothing to say they belong together.
+function groupNews(rows) {
+  return rows
+    .filter(n => n.html)
+    .sort((a, b) => (b.when ? b.when.getTime() : 0) - (a.when ? a.when.getTime() : 0))
+    .reduce((out, n) => {
+      const prev = out[out.length - 1];
+      const same = prev && prev.when && n.when && prev.when.getTime() === n.when.getTime();
+      if (same) prev.bodies.push(n.html);
+      else out.push({ when: n.when, bodies: [n.html] });
+      return out;
+    }, []);
+}
+
+// The published table renders each row as a row-number <th> followed by the
+// cells. The first body row is the sheet's own header row (Date / Update), so
+// it's dropped by matching it rather than by position — a blank leading row in
+// the sheet would shift any fixed index.
+function parseNewsPub(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  return groupNews([...doc.querySelectorAll("table tbody tr")].map(tr => {
+    const cells = tr.querySelectorAll("td");
+    if (cells.length < 2) return {};
+    const label = (cells[0].textContent || "").trim().toLowerCase();
+    if (label === "date") return {};
+    return { when: pubDate(cells[0].textContent), html: cellHtml(cells[1]) };
+  }));
+}
+
+// The published cell carries the date as display text ("8/6/26"), not the real
+// value gviz gives, so it has to be read back. Two digits mean this century:
+// the sheet has no 20th-century entries and won't get any.
+function pubDate(text) {
+  const s = (text || "").trim();
+  const md = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})$/);
+  if (md) {
+    const y = +md[3];
+    return new Date(y < 100 ? 2000 + y : y, +md[1] - 1, +md[2]);
+  }
+  const p = new Date(s);
+  return isNaN(p) ? null : p;
+}
+
+// Google's table is styled with its own spans and colors, and its links are
+// wrapped in a redirector. Only the text and the anchors are wanted, so the
+// cell is walked and rebuilt: text is escaped (and bare URLs linked), anchors
+// keep their unwrapped href, everything else is discarded down to its text.
+function cellHtml(td) {
+  const walk = node => [...node.childNodes].map(n => {
+    if (n.nodeType === Node.TEXT_NODE) return linkify(n.nodeValue);
+    if (n.nodeName === "BR") return "<br>";
+    if (n.nodeName === "A") {
+      const href = unwrapGoogleUrl(n.getAttribute("href") || "");
+      const inner = walk(n) || esc(n.textContent);
+      return /^https?:\/\//i.test(href)
+        ? `<a href="${esc(href)}" target="_blank" rel="noopener">${inner}</a>`
+        : inner;
+    }
+    return walk(n);
+  }).join("");
+  return walk(td).trim();
+}
+
+// Sheets rewrites every link as https://www.google.com/url?q=<real>&sa=D&...
+// on publish. The redirector works, but it leaks the visit to Google and shows
+// a google.com host on hover, so the real URL is pulled back out.
+function unwrapGoogleUrl(href) {
+  const m = href.match(/^https?:\/\/(?:www\.)?google\.com\/url\?(.+)$/);
+  if (!m) return href;
+  const q = new URLSearchParams(m[1]).get("q");
+  return q || href;
 }
 
 const esc = s => (s || "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -438,7 +507,7 @@ async function load() {
   try {
     const [photos, news, ...data] = await Promise.all([
       fetch("photos.json").then(r => r.ok ? r.json() : {}).catch(() => ({})),
-      fetch(gvizUrl(NEWS_GID)).then(r => r.text()).then(parseNews),
+      fetch(NEWS_PUB_URL).then(r => r.text()).then(parseNewsPub),
       ...VIEWS.map(v => fetch(gvizUrl(v.gid)).then(r => r.text()).then(parseGviz)),
     ]);
     PHOTOS = photos;
@@ -486,6 +555,22 @@ async function load() {
 const NEWS_PANEL_MAX = 3;
 let NEWS = [];
 
+// A URL sitting in the text as a bare URL becomes a link. This runs on the text
+// nodes of a published cell, after escaping, so it only ever sees what the sheet
+// author typed — `&` inside a query string is already `&amp;` by then, which is
+// what an href wants anyway. Trailing punctuation is left out of the link: a URL
+// ending a sentence shouldn't swallow the period.
+//
+// Links made with Sheets' Insert > Link don't come through here. They arrive as
+// real anchors and are handled in cellHtml.
+function linkify(body) {
+  return esc(body).replace(/\bhttps?:\/\/[^\s<]+/g, url => {
+    const trail = url.match(/[.,;:!?)\]]+$/);
+    const href = trail ? url.slice(0, -trail[0].length) : url;
+    return `<a href="${href}" target="_blank" rel="noopener">${href}</a>${trail ? trail[0] : ""}`;
+  });
+}
+
 function newsList(items) {
   const fmt = d => d
     ? d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
@@ -493,7 +578,7 @@ function newsList(items) {
   return `<ol class="news-list">${items.map(n => `
     <li class="news-item">
       ${n.when ? `<time datetime="${n.when.toISOString().slice(0, 10)}">${fmt(n.when)}</time>` : ""}
-      <p>${esc(n.body)}</p>
+      <p>${n.bodies.join("<br>—<br>")}</p>
     </li>`).join("")}
   </ol>`;
 }
