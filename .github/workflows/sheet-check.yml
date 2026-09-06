@@ -1,0 +1,29 @@
+name: sheet-check
+
+on:
+  push:
+    branches: ["claude/cat-colony-page-loading-nyrh3l"]
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe the sheet endpoints anonymously
+        run: |
+          SHEET=1UHlnzkYfQK-DDTvkqu8x-IDl3tB7L8fdiBQw_-V9GzY
+          PUB=2PACX-1vRVyTmBa643DI_S9TZC4DeFlvMq1KCp2JMe8D81SGGQ4qRkWOD9RN_vCLjsNTD1gdKhqatyiJvENEIS
+          probe () {
+            echo "=== $1"
+            echo "--- final status / redirect chain:"
+            curl -sSL -o body.txt -w 'http=%{http_code} url_effective=%{url_effective} size=%{size_download}\n' "$2" || echo "curl failed rc=$?"
+            echo "--- first 300 bytes of body:"
+            head -c 300 body.txt; echo
+            echo
+          }
+          probe "gviz colony (gid=0)"        "https://docs.google.com/spreadsheets/d/$SHEET/gviz/tq?tqx=out:json&gid=0"
+          probe "gviz adopted (679410925)"   "https://docs.google.com/spreadsheets/d/$SHEET/gviz/tq?tqx=out:json&gid=679410925"
+          probe "gviz visitors (1859449606)" "https://docs.google.com/spreadsheets/d/$SHEET/gviz/tq?tqx=out:json&gid=1859449606"
+          probe "gviz memoriam (2113017747)" "https://docs.google.com/spreadsheets/d/$SHEET/gviz/tq?tqx=out:json&gid=2113017747"
+          probe "news pubhtml (1710528874)"  "https://docs.google.com/spreadsheets/d/e/$PUB/pubhtml?gid=1710528874&single=true&widget=false&headers=false"
+          probe "live site"                  "https://katylava.github.io/cat-colony/"
