@@ -9,22 +9,51 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
+      - name: Google Workspace status feed
+        run: |
+          set +e
+          curl -sSL --connect-timeout 10 --max-time 30 -o incidents.json \
+            -w 'http=%{http_code} size=%{size_download}\n' \
+            "https://www.google.com/appsstatus/dashboard/incidents.json" || echo "curl failed rc=$?"
+          python3 - <<'PY'
+          import json, datetime, sys
+          try:
+              data = json.load(open("incidents.json"))
+          except Exception as e:
+              print("could not parse incidents.json:", e); sys.exit(0)
+          now = datetime.datetime.now(datetime.timezone.utc)
+          def ts(s):
+              try: return datetime.datetime.fromisoformat(s.replace("Z","+00:00"))
+              except Exception: return None
+          recent = []
+          for inc in data:
+              m = ts(inc.get("modified") or inc.get("created") or "")
+              if m and (now - m).total_seconds() < 3*86400:
+                  recent.append((m, inc))
+          recent.sort(reverse=True)
+          print(f"total incidents in feed: {len(data)}; modified in last 3 days: {len(recent)}")
+          for m, inc in recent[:12]:
+              prods = ", ".join(p.get("title","?") for p in inc.get("affected_products", []))
+              print("---")
+              print("modified:", m.isoformat(), "| begin:", inc.get("begin"), "| end:", inc.get("end") or "ONGOING")
+              print("severity:", inc.get("severity"), "| status:", inc.get("most_recent_update",{}).get("status"))
+              print("products:", prods)
+              print("desc:", (inc.get("external_desc") or "")[:400])
+          PY
+
       - name: Probe the sheet endpoints anonymously
         run: |
           SHEET=1UHlnzkYfQK-DDTvkqu8x-IDl3tB7L8fdiBQw_-V9GzY
           PUB=2PACX-1vRVyTmBa643DI_S9TZC4DeFlvMq1KCp2JMe8D81SGGQ4qRkWOD9RN_vCLjsNTD1gdKhqatyiJvENEIS
           probe () {
             echo "=== $1"
-            echo "--- final status / redirect chain:"
-            curl -sSL --connect-timeout 10 --max-time 25 -o body.txt -w 'http=%{http_code} url_effective=%{url_effective} size=%{size_download}\n' "$2" || echo "curl failed rc=$?"
-            echo "--- first 300 bytes of body:"
-            head -c 300 body.txt; echo
-            echo
+            rm -f body.txt
+            curl -sSL --connect-timeout 10 --max-time 25 -o body.txt \
+              -w 'http=%{http_code} size=%{size_download} time=%{time_total}s\n' "$2" || echo "curl failed rc=$?"
+            echo "--- first 200 bytes:"; head -c 200 body.txt 2>/dev/null; echo; echo
           }
           set +e
-          probe "gviz colony (gid=0)"        "https://docs.google.com/spreadsheets/d/$SHEET/gviz/tq?tqx=out:json&gid=0"
-          probe "gviz adopted (679410925)"   "https://docs.google.com/spreadsheets/d/$SHEET/gviz/tq?tqx=out:json&gid=679410925"
-          probe "gviz visitors (1859449606)" "https://docs.google.com/spreadsheets/d/$SHEET/gviz/tq?tqx=out:json&gid=1859449606"
-          probe "gviz memoriam (2113017747)" "https://docs.google.com/spreadsheets/d/$SHEET/gviz/tq?tqx=out:json&gid=2113017747"
-          probe "news pubhtml (1710528874)"  "https://docs.google.com/spreadsheets/d/e/$PUB/pubhtml?gid=1710528874&single=true&widget=false&headers=false"
-          probe "live site"                  "https://katylava.github.io/cat-colony/"
+          probe "gviz colony (gid=0)"       "https://docs.google.com/spreadsheets/d/$SHEET/gviz/tq?tqx=out:json&gid=0"
+          probe "news pubhtml (1710528874)" "https://docs.google.com/spreadsheets/d/e/$PUB/pubhtml?gid=1710528874&single=true&widget=false&headers=false"
+          probe "news pubhtml (retry)"      "https://docs.google.com/spreadsheets/d/e/$PUB/pubhtml?gid=1710528874&single=true&widget=false&headers=false"
+          probe "docs.google.com root"      "https://docs.google.com/"
