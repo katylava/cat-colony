@@ -499,6 +499,24 @@ function neuterPill(v) {
   if (/^no?$/i.test(s)) return { cls: "warn", icon: "•", label: "Not yet fixed" };
   return null;
 }
+// A hung request is worse than a failed one: it never rejects, so the page waits
+// on it forever with nothing on screen. Every fetch here gets a deadline, and a
+// blown deadline is a failure like any other.
+const SHEET_TIMEOUT_MS = 15000;
+const NEWS_TIMEOUT_MS = 8000;
+const PHOTO_TIMEOUT_MS = 8000;
+
+function fetchText(url, ms) {
+  const stop = new AbortController();
+  const timer = setTimeout(() => stop.abort(), ms);
+  return fetch(url, { signal: stop.signal })
+    .then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return r.text();
+    })
+    .finally(() => clearTimeout(timer));
+}
+
 let BYVIEW = {};   // key -> [rows]
 let PHOTOS = {};
 
@@ -506,9 +524,17 @@ async function load() {
   const state = document.getElementById("state");
   try {
     const [photos, news, ...data] = await Promise.all([
-      fetch("photos.json").then(r => r.ok ? r.json() : {}).catch(() => ({})),
-      fetch(NEWS_PUB_URL).then(r => r.text()).then(parseNewsPub),
-      ...VIEWS.map(v => fetch(gvizUrl(v.gid)).then(r => r.text()).then(parseGviz)),
+      fetchText("photos.json", PHOTO_TIMEOUT_MS).then(JSON.parse).catch(() => ({})),
+      // News never blocks the cats. The published-sheet endpoint has been seen
+      // accepting the connection and then sending nothing at all, which a plain
+      // fetch waits out forever — the page sat on "Loading…" with the cat data
+      // already in hand. Its own timeout and its own catch keep that local: the
+      // panel goes missing, the colony still loads.
+      fetchText(NEWS_PUB_URL, NEWS_TIMEOUT_MS).then(parseNewsPub).catch(e => {
+        console.warn("News unavailable:", e);
+        return [];
+      }),
+      ...VIEWS.map(v => fetchText(gvizUrl(v.gid), SHEET_TIMEOUT_MS).then(parseGviz)),
     ]);
     PHOTOS = photos;
     renderNews(news);
@@ -587,6 +613,9 @@ function newsList(items) {
 // routing doesn't touch it.
 function renderNews(items) {
   NEWS = items;
+  // No entries means no panel — an empty "News" heading reads like the log is
+  // empty, when in fact it just couldn't be read.
+  if (!items.length) { document.getElementById("newspanel").innerHTML = ""; return; }
   document.getElementById("newspanel").innerHTML = `
     <h2 class="news-head">News</h2>
     ${newsList(items.slice(0, NEWS_PANEL_MAX))}
