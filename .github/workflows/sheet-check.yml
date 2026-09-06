@@ -16,11 +16,12 @@ jobs:
           probe () {
             echo "=== $1"
             echo "--- final status / redirect chain:"
-            curl -sSL -o body.txt -w 'http=%{http_code} url_effective=%{url_effective} size=%{size_download}\n' "$2" || echo "curl failed rc=$?"
+            curl -sSL --connect-timeout 10 --max-time 25 -o body.txt -w 'http=%{http_code} url_effective=%{url_effective} size=%{size_download}\n' "$2" || echo "curl failed rc=$?"
             echo "--- first 300 bytes of body:"
             head -c 300 body.txt; echo
             echo
           }
+          set +e
           probe "gviz colony (gid=0)"        "https://docs.google.com/spreadsheets/d/$SHEET/gviz/tq?tqx=out:json&gid=0"
           probe "gviz adopted (679410925)"   "https://docs.google.com/spreadsheets/d/$SHEET/gviz/tq?tqx=out:json&gid=679410925"
           probe "gviz visitors (1859449606)" "https://docs.google.com/spreadsheets/d/$SHEET/gviz/tq?tqx=out:json&gid=1859449606"
