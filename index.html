@@ -192,6 +192,11 @@
   .status { font-size: .9rem; margin: 0 0 10px; }
   .status .slabel { display: block; text-transform: uppercase; letter-spacing: .04em; font-size: .66rem; color: var(--muted); margin-bottom: 1px; }
   .status .sval { color: var(--text); }
+  /* A cat's own album: a plain link, since a button outweighs the statement
+     above it. Sits after the statement, before the details. */
+  .album { display: inline-block; margin: 0 0 12px; font-size: .9rem; color: var(--accent); text-decoration: none; }
+  .album:hover { text-decoration: underline; }
+  .album .ext { opacity: .6; font-size: .85em; }
   .statement { font-size: .9rem; line-height: 1.45; margin: 0 0 12px; padding-left: 10px; border-left: 2px solid var(--line); color: var(--text); }
   dl { margin: 0; font-size: .85rem; }
   dt { color: var(--muted); text-transform: uppercase; letter-spacing: .04em; font-size: .66rem; margin-top: 9px; }
@@ -369,6 +374,11 @@ const catSlug = () => (location.hash.match(/^#cat\/(.+)$/) || [])[1] || null;
 // whole publishing step.
 const NEWS_GID = "1710528874";
 
+// The photo-lookup tab. Its images come from photos.json (they need resolving —
+// see build_photos.py), but its Album URL column is read live: a link needs no
+// resolving, so adding one shouldn't wait on a rebuild.
+const PHOTO_GID = "869689683";
+
 // News reads the sheet's published-to-web HTML, not gviz, because a link made
 // with Sheets' Insert > Link is a property of the cell that the data APIs drop:
 // gviz JSON, gviz HTML, the TSV export, htmlview and preview all hand back the
@@ -501,16 +511,20 @@ function neuterPill(v) {
 }
 let BYVIEW = {};   // key -> [rows]
 let PHOTOS = {};
+let ALBUMS = {};   // name -> album URL, for cats whose photo opens an album
 
 async function load() {
   const state = document.getElementById("state");
   try {
-    const [photos, news, ...data] = await Promise.all([
+    const [photos, albums, news, ...data] = await Promise.all([
       fetch("photos.json").then(r => r.ok ? r.json() : {}).catch(() => ({})),
+      // Albums are an extra; if the tab can't be read, photos open as before.
+      fetch(gvizUrl(PHOTO_GID)).then(r => r.text()).then(parseGviz).catch(() => []),
       fetch(NEWS_PUB_URL).then(r => r.text()).then(parseNewsPub),
       ...VIEWS.map(v => fetch(gvizUrl(v.gid)).then(r => r.text()).then(parseGviz)),
     ]);
     PHOTOS = photos;
+    albums.forEach(r => { if (r.Name && r["Album URL"]) ALBUMS[r.Name] = r["Album URL"]; });
     renderNews(news);
     VIEWS.forEach((v, i) => { BYVIEW[v.key] = data[i].filter(r => r.Name); });
     // The adoption screen has no tab of its own — it's derived: every cat flagged
@@ -675,9 +689,11 @@ function card(c, view, solo) {
   const inner = photo
     ? `<img loading="lazy" src="${esc(photo.img)}=w500" alt="${esc(name)}">`
     : `<span class="ph">🐈</span>`;
-  // Clicking the photo opens its Google Photos share page in a new tab.
-  const img = photo && photo.share
-    ? `<a href="${esc(photo.share)}" target="_blank" rel="noopener" title="View ${esc(name)}'s photos">${inner}</a>`
+  // Clicking the photo opens the cat's album if it has one, otherwise its
+  // Google Photos share page, in a new tab.
+  const href = ALBUMS[name] || (photo && photo.share);
+  const img = href
+    ? `<a href="${esc(href)}" target="_blank" rel="noopener" title="View ${esc(name)}'s photos">${inner}</a>`
     : inner;
   const tags = adopt ? `<div class="corner"><span class="tag">Adoptable</span></div>` : "";
   // The name is the way into a cat's own screen — except on that screen, where
@@ -712,6 +728,7 @@ function card(c, view, solo) {
       ${pills ? `<div class="pills">${pills}</div>` : ""}
       ${c.Status ? `<div class="status"><span class="slabel">Status</span><span class="sval">${esc(c.Status)}</span></div>` : ""}
       ${c.Statement ? `<p class="statement">${esc(c.Statement)}</p>` : ""}
+      ${ALBUMS[name] ? `<a class="album" href="${esc(ALBUMS[name])}" target="_blank" rel="noopener">📷 Photo album <span class="ext" aria-hidden="true">↗</span></a>` : ""}
       <dl>${details}</dl>
     </div>
   </article>`;

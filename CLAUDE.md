@@ -54,7 +54,7 @@ screen, plus a photo-lookup tab:
 - `gid=679410925` — adopted by the owner
 - `gid=1859449606` — feral visitors (seen too rarely to trap)
 - `gid=2113017747` — in memoriam
-- `gid=869689683` — photo lookup (Name, Image URL, Share URL)
+- `gid=869689683` — photo lookup (Name, Image URL, Share URL, Album URL)
 - `gid=1710528874` — news (Date, Update), not a screen — see below
 
 `index.html` fetches the four data tabs live via the gviz JSON endpoint on every
@@ -73,6 +73,17 @@ python build_photos.py
 ```
 
 then commit `photos.json`.
+
+### Albums
+
+The photo tab's `Album URL` column is the exception: `index.html` reads it live
+via gviz, because a link needs no resolving. When it's filled in, the card shows
+a "📷 Photo album ↗" text link under the statement, and the thumbnail opens the
+album instead of the single photo. It exists for the foster kittens, three of
+whom share one album, which is why it's a separate column: the album's cover
+would give all three the same thumbnail, so Share URL still picks each cat's
+photo. A plain text link, not a pill like the masthead's — a pill outweighed
+the statement above it. A cat with no Album URL is unchanged.
 
 ## News
 
@@ -215,7 +226,12 @@ files, or a small server that renders the tags on request.
 
 - Node and Python are provided via mise. If a scratch dir outside a project
   errors, pin a version there with `mise use node@24.5.0`.
-- Preview locally with `python -m http.server` in the repo root.
+- Preview locally with `python -m http.server` in the repo root, and open it as
+  `http://127.0.0.1:<port>/`, never `localhost`. `lh3.googleusercontent.com`
+  answers 429 to image requests with a `localhost` referrer, so every photo is
+  blank there; `127.0.0.1`, no referrer, and the live site all get 200. This
+  applies to Playwright too: a blank thumbnail on a `localhost` screenshot is
+  this, not a broken photo.
 - Verify changes with a headless browser (Playwright) screenshotting the live
   URL or the local server — don't rely on driving the user's Chrome.
 - Playwright here is the **Python** package (`from playwright.sync_api import

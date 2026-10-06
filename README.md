@@ -35,6 +35,23 @@ Run this whenever you add a cat or change a photo in the sheet, then commit `pho
 python build_photos.py
 ```
 
+The photo tab's **Album URL** column is the exception: it's read live, so a new
+album link shows up on refresh with no script. A cat with one gets a
+"📷 Photo album" link on its card, and its photo opens the album.
+
+## Previewing locally
+
+From the repo root:
+
+```sh
+python -m http.server 8000
+```
+
+Then open http://127.0.0.1:8000/, not `localhost`. Google's photo server
+refuses image requests from a `localhost` page (it answers 429), so every
+thumbnail comes up blank there. `127.0.0.1` is the same server and the photos
+load.
+
 ## Files
 
 - `index.html` — the whole app (plain HTML/CSS/JS, no build step)
