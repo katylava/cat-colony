@@ -267,6 +267,14 @@
     font-size: .82rem; text-decoration: none;
   }
   .news-more:hover { color: var(--accent); }
+  /* Not news, so it's ruled off below the panel's link rather than styled as
+     an entry. */
+  .elsewhere {
+    margin: 16px 0 0; padding-top: 14px; border-top: 1px solid var(--line);
+    font-size: .8rem; line-height: 1.45; color: var(--muted);
+  }
+  .elsewhere a { color: var(--accent); text-decoration: none; }
+  .elsewhere a:hover { text-decoration: underline; }
 
   /* No room for a column on a phone: the panel becomes a block above the screen,
      cut to the newest entry alone, so what's new is the first thing seen and the
@@ -604,7 +612,9 @@ function renderNews(items) {
   document.getElementById("newspanel").innerHTML = `
     <h2 class="news-head">News</h2>
     ${newsList(items.slice(0, NEWS_PANEL_MAX))}
-    ${items.length > 1 ? `<a class="news-more" href="#news">All ${items.length} updates →</a>` : ""}`;
+    ${items.length > 1 ? `<a class="news-more" href="#news">All ${items.length} updates →</a>` : ""}
+    <p class="elsewhere">For more cats, and other stuff, but mostly cats, find me on
+      <a href="https://www.instagram.com/katylava/" target="_blank" rel="noopener">Instagram <span aria-hidden="true">↗</span></a>.</p>`;
 }
 
 // The screen the news link was clicked from. Every screen carries the panel, so
