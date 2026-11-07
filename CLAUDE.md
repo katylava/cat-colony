@@ -240,3 +240,11 @@ files, or a small server that renders the tags on request.
   it — that is not evidence Playwright is missing. Write the check in Python and
   run it with `python3`.
 - Deploy = commit and push to `main`; GitHub Pages rebuilds in a minute or two.
+- **In a cloud session** (Claude Code on the web or the app, not the desktop
+  CLI), the local-preview and Playwright steps above don't apply — don't run
+  Playwright or install it. Instead, push the working branch and give me a
+  link to view it:
+  `https://raw.githack.com/katylava/cat-colony/<branch>/index.html`. It serves
+  the branch's files as a real page, so `photos.json` and the sheet fetches
+  load as they do on the live site. Pushing to that branch doesn't deploy;
+  only `main` does.
