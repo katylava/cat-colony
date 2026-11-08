@@ -82,6 +82,23 @@
   .outlink:hover { border-color: var(--accent); color: var(--accent); }
   .outlink .ext { opacity: .6; font-size: .85em; }
 
+  /* The contact band. Visitors arrive for a kitten and don't notice the small
+     "Contact me" pill in the masthead, so whenever an adoptable cat is on
+     screen — a grid, search results, or the cat's own page — the band states
+     the two ways to reach the owner, the form and the email. No adoptable cat
+     showing, no band; see showContact. It sits under the search box rather than
+     above it so appearing and disappearing as a search narrows doesn't move the
+     box under the typist. Tinted like the news rail: a notice, not a card. */
+  .contact {
+    margin: 12px 0 0; padding: 12px 16px; border-radius: 12px;
+    background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+    font-size: .95rem; line-height: 1.5;
+  }
+  .contact strong { font-weight: 600; }
+  .contact a { color: var(--accent); font-weight: 600; text-decoration: none; overflow-wrap: anywhere; }
+  .contact a:hover { text-decoration: underline; }
+  .contact .ext { opacity: .6; font-size: .85em; }
+
   nav {
     position: sticky; top: 0; z-index: 5;
     background: color-mix(in srgb, var(--bg) 88%, transparent);
@@ -320,6 +337,16 @@
   <div class="toolbar">
     <input type="search" id="search" placeholder="Search all cats by name, status, litter…" autocomplete="off">
   </div>
+</div>
+
+<!-- The contact band: shown whenever an adoptable cat is on screen, toggled by
+     showContact. Starts hidden so nothing flashes before the data loads. -->
+<div class="wrap">
+  <p class="contact" id="contact" hidden>
+    <strong>Interested in adopting, or have a question?</strong>
+    Use the <a href="https://forms.gle/651qTXwfRUi73AGYA" target="_blank" rel="noopener">contact form <span class="ext" aria-hidden="true">↗</span></a>
+    or email <a href="mailto:katylava@gmail.com">katylava@gmail.com</a>.
+  </p>
 </div>
 
 <nav><div class="wrap"><div class="nav-inner" id="nav"></div></div></nav>
@@ -775,12 +802,26 @@ function renderCat(wanted) {
       There's no cat at that link.
       <p><a class="back" href="#colony">← See every cat</a></p>
     </div>`;
+    showContact([]);
     return;
   }
+  showContact([hit.c]);
   document.title = `${hit.c.Name} — ${SITE_TITLE}`;
   BACK = { hash: `#cat/${wanted}`, label: hit.c.Name };
   top.innerHTML = `<p class="view-blurb"><a class="back" href="#${hit.v.key}">← ${hit.v.title}</a></p>`;
   main.innerHTML = `<div class="solo">${card(hit.c, hit.v, true)}</div>`;
+}
+
+// The contact band shows when any cat being rendered is up for adoption.
+// Every render path reports what it put on screen. Mid-search the results
+// change on every keystroke, so the toggle waits until typing pauses rather
+// than flickering the band (and the nav under it) with each letter.
+const adoptable = c => isYes(c["Up for adoption?"]);
+let contactTimer;
+function showContact(cats) {
+  clearTimeout(contactTimer);
+  const apply = () => { document.getElementById("contact").hidden = !cats.some(adoptable); };
+  if (SEARCH) contactTimer = setTimeout(apply, 500); else apply();
 }
 
 function route() {
@@ -791,7 +832,7 @@ function route() {
   document.querySelector(".layout").classList.toggle("wide", onNews);
   document.getElementById("newspanel").hidden = onNews;
   if (cat) return renderCat(cat);
-  if (onNews) return renderNewsPage();
+  if (onNews) { showContact([]); return renderNewsPage(); }
 
   const v = currentView();
   if (!location.hash) location.hash = "#colony";
@@ -807,12 +848,13 @@ function route() {
   // A search broadens automatically to every screen, and results are grouped by
   // section so each match's screen stays clear. With no search it's just the
   // current screen. Cards render with their own view for screen-aware pills.
-  let body, hasResults;
+  let body, hasResults, shown;
   if (searching) {
     const sections = NAV
       .map(view => ({ view, rows: BYVIEW[view.key].filter(match) }))
       .filter(s => s.rows.length);
     hasResults = sections.length > 0;
+    shown = sections.flatMap(s => s.rows);
     body = sections.map(s => `
       <section class="results">
         <h2 class="section-head">${s.view.title} <span class="n">${s.rows.length}</span></h2>
@@ -821,8 +863,10 @@ function route() {
   } else {
     const rows = BYVIEW[v.key].filter(match);
     hasResults = rows.length > 0;
+    shown = rows;
     body = `<div class="grid">${rows.map(c => card(c, v)).join("")}</div>`;
   }
+  showContact(shown);
 
   // The stats and the blurb go in the full-width band above both columns; only
   // the cats themselves sit in the column beside the news.
